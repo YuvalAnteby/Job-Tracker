@@ -67,3 +67,23 @@ export interface JobFilters {
   fit?: 'all' | 'applicable' | 'interesting';
   search?: string;
 }
+
+export interface GapSummaryResult {
+  domains: Record<
+    string,
+    {
+      missing_skills: string[];
+      partially_known: string[];
+      gaps_detail: string;
+    }
+  >;
+  overall_top_gaps: string[];
+}
+
+export interface GapSummary {
+  id: string;
+  generated_at: string;
+  domain_filter: Domain | null;
+  summary: GapSummaryResult;
+  job_count: number;
+}
