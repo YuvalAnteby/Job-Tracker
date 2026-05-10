@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, IsNull } from 'typeorm';
 import { GapSummary } from './entities/gap-summary.entity';
@@ -7,6 +7,7 @@ import { Domain } from '../jobs/enums/domain.enum';
 import { JobStatus } from '../jobs/enums/job-status.enum';
 import { LlmService } from '../llm/llm.service';
 import { JobSummaryInput } from '../llm/interfaces/job-analysis.interface';
+import { TelegramService } from '../telegram/telegram.service';
 
 @Injectable()
 export class GapService {
@@ -18,6 +19,8 @@ export class GapService {
     @InjectRepository(Job)
     private readonly jobRepository: Repository<Job>,
     private readonly llmService: LlmService,
+    @Inject(forwardRef(() => TelegramService))
+    private readonly telegramService: TelegramService,
   ) {}
 
   generate(domainFilter?: Domain): void {
@@ -86,7 +89,8 @@ export class GapService {
         `Gap analysis completed successfully. Saved summary ID: ${gapSummary.id}`,
       );
 
-      // TODO: Notify via Telegram
+      // 5. Notify via Telegram
+      await this.notifyViaTelegram(gapSummary);
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
       const stack = error instanceof Error ? error.stack : undefined;
@@ -95,6 +99,46 @@ export class GapService {
         stack,
       );
     }
+  }
+
+  private async notifyViaTelegram(gapSummary: GapSummary): Promise<void> {
+    const { summary, domain_filter, job_count } = gapSummary;
+    const domainLabel = domain_filter || 'All Domains';
+
+    let message = `✅ <b>Gap Analysis Ready</b> (${domainLabel} · ${job_count} jobs)\n\n`;
+
+    // Extract details for the relevant domain(s)
+    const domainsToReport = domain_filter
+      ? [domain_filter]
+      : Object.keys(summary.domains);
+
+    domainsToReport.forEach((domain) => {
+      const data = summary.domains[domain];
+      if (!data) return;
+
+      if (!domain_filter) {
+        message += `🌐 <b>${domain}:</b>\n`;
+      }
+
+      if (data.missing_skills?.length > 0) {
+        message += `🔴 <b>Missing:</b> ${data.missing_skills.join(', ')}\n`;
+      }
+
+      if (data.partially_known?.length > 0) {
+        message += `🟡 <b>Partial:</b> ${data.partially_known.join(', ')}\n`;
+      }
+      
+      message += `\n`;
+    });
+
+    if (summary.overall_top_gaps?.length > 0) {
+      message += `<b>Top skills to invest in:</b>\n`;
+      summary.overall_top_gaps.slice(0, 5).forEach((gap, index) => {
+        message += `${index + 1}. ${gap}\n`;
+      });
+    }
+
+    await this.telegramService.broadcastMessage(message);
   }
 
   async getLatest(domainFilter?: Domain): Promise<GapSummary | null> {
