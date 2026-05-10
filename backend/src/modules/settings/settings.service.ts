@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
+﻿import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Setting } from './entities/setting.entity';
@@ -53,7 +53,7 @@ export class SettingsService implements OnModuleInit {
         FULLSTACK: ['full stack', 'fullstack', 'full-stack'],
       },
       llm_provider: 'gemini',
-      llm_model: 'gemini-1.5-flash',
+      llm_model: 'gemini-2.5-flash',
       telegram_allowed_chat_ids: [],
     };
 

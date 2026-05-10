@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { Modal } from '../shared/Modal';
 import { Job, JobStatus, Domain, MetStatus } from '../../types';
 import { useJob, useUpdateJob, useDeleteJob } from '../../hooks/useJobs';
@@ -45,14 +45,14 @@ const RequirementRow: React.FC<{ requirement: any }> = ({ requirement }) => {
         className="w-full flex items-center justify-between py-3 hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors px-2 rounded-lg"
       >
         <div className="flex items-center space-x-3 text-left">
-          {getIcon(requirement.status)}
-          <span className="font-medium text-gray-700 dark:text-slate-300">{requirement.requirement}</span>
+          {getIcon(requirement.met_status)}
+          <span className="font-medium text-gray-700 dark:text-slate-300">{requirement.name}</span>
         </div>
         {isExpanded ? <ChevronUp className="h-4 w-4 text-gray-400 dark:text-slate-500" /> : <ChevronDown className="h-4 w-4 text-gray-400 dark:text-slate-500" />}
       </button>
       {isExpanded && (
         <div className="pb-4 pl-10 pr-4 text-sm text-gray-600 dark:text-slate-400 animate-in fade-in slide-in-from-top-1">
-          {requirement.reason}
+          {requirement.reasoning}
         </div>
       )}
     </div>
@@ -89,9 +89,9 @@ export const JobDetailModal: React.FC<JobDetailModalProps> = ({ jobId, isOpen, o
     updateJob.mutate({
       id: jobId,
       notes: notes || undefined,
-      score_override: scoreOverride === '' ? null : Number(scoreOverride),
-      domain_override: domainOverride === '' ? null : domainOverride as Domain,
-      is_applicable_override: isApplicableOverride === 'yes' ? true : isApplicableOverride === 'no' ? false : null,
+      score_override: scoreOverride === '' ? undefined : Number(scoreOverride),
+      domain_override: domainOverride === '' ? undefined : domainOverride as Domain,
+      is_applicable_override: isApplicableOverride === 'yes' ? true : isApplicableOverride === 'no' ? false : undefined,
     }, {
       onSuccess: () => toast.success('Changes saved successfully'),
       onError: () => toast.error('Failed to save changes'),
@@ -110,7 +110,7 @@ export const JobDetailModal: React.FC<JobDetailModalProps> = ({ jobId, isOpen, o
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={isLoading ? 'Loading...' : `${job?.company} — ${job?.title}`}>
+    <Modal isOpen={isOpen} onClose={onClose} title={isLoading ? 'Loading...' : `${job?.company_name} â€” ${job?.title}`}>
       {isLoading || !job ? (
         <div className="flex flex-col items-center justify-center py-20 space-y-4">
           <Loader2 className="h-10 w-10 text-blue-600 animate-spin" />
@@ -127,7 +127,7 @@ export const JobDetailModal: React.FC<JobDetailModalProps> = ({ jobId, isOpen, o
             </div>
             <div className="flex items-center space-x-4 text-sm text-gray-500 dark:text-slate-400">
               <div className="flex flex-col">
-                <span>Added: {format(new Date(job.created_at), 'MMM d, yyyy')}</span>
+                <span>Added: {format(new Date(job.added_at), 'MMM d, yyyy')}</span>
                 {job.posted_at && <span>Posted: {format(new Date(job.posted_at), 'MMM d, yyyy')}</span>}
               </div>
               <a 

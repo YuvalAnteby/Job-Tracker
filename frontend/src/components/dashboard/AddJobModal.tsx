@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { useForm } from 'react-hook-form';
 import { Modal } from '../shared/Modal';
 import { useCreateJob } from '../../hooks/useJobs';
@@ -11,7 +11,7 @@ interface AddJobModalProps {
 }
 
 interface JobFormData {
-  company: string;
+  company_name: string;
   title: string;
   url: string;
   posted_at?: string;
@@ -31,7 +31,7 @@ export const AddJobModal: React.FC<AddJobModalProps> = ({ isOpen, onClose }) => 
   const onSubmit = (data: JobFormData) => {
     createJob.mutate(data, {
       onSuccess: (job) => {
-        toast.success(`✅ ${job.company} — ${job.title} added (Score: ${job.effective_score})`);
+        toast.success(`âœ… ${job.company_name} â€” ${job.title} added (Score: ${job.effective_score})`);
         reset();
         onClose();
       },
@@ -51,11 +51,11 @@ export const AddJobModal: React.FC<AddJobModalProps> = ({ isOpen, onClose }) => 
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Company *</label>
           <input
-            {...register('company', { required: 'Company is required' })}
+            {...register('company_name', { required: 'Company is required' })}
             className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all placeholder-gray-400 dark:placeholder-slate-500"
             placeholder="e.g. Google"
           />
-          {errors.company && <p className="mt-1 text-xs text-red-500">{errors.company.message}</p>}
+          {errors.company_name && <p className="mt-1 text-xs text-red-500">{errors.company_name.message}</p>}
         </div>
 
         <div>
@@ -123,7 +123,7 @@ export const AddJobModal: React.FC<AddJobModalProps> = ({ isOpen, onClose }) => 
                 Analyzing with AI...
               </>
             ) : (
-              'Analyze →'
+              'Analyze â†’'
             )}
           </button>
         </div>

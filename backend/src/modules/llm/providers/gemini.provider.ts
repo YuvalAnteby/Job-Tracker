@@ -1,6 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+﻿import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
+import { GoogleGenAI, Type } from '@google/genai';
 import { LlmProvider } from '../llm.provider';
 import { JobAnalysis } from '../interfaces/job-analysis.interface';
 import { Domain } from '../../jobs/enums/domain.enum';
@@ -9,7 +9,7 @@ import { MetStatus } from '../../jobs/enums/met-status.enum';
 @Injectable()
 export class GeminiProvider extends LlmProvider {
   private readonly logger = new Logger(GeminiProvider.name);
-  private genAI: GoogleGenerativeAI;
+  private ai: GoogleGenAI;
 
   constructor(private readonly configService: ConfigService) {
     super();
@@ -17,54 +17,18 @@ export class GeminiProvider extends LlmProvider {
     if (!apiKey) {
       this.logger.error('GEMINI_API_KEY is not defined in environment variables');
     } else {
-      this.genAI = new GoogleGenerativeAI(apiKey);
+      this.ai = new GoogleGenAI({ apiKey });
     }
   }
 
   async analyzeJob(
     jobDescription: string,
     cvText: string,
-    model: string = 'gemini-1.5-flash',
+    model: string = 'gemini-2.5-flash',
   ): Promise<JobAnalysis> {
-    if (!this.genAI) {
+    if (!this.ai) {
       throw new Error('Gemini AI not initialized (missing API key)');
     }
-
-    const genModel = this.genAI.getGenerativeModel({
-      model,
-      generationConfig: {
-        responseMimeType: 'application/json',
-        responseSchema: {
-          type: SchemaType.OBJECT,
-          properties: {
-            score: { type: SchemaType.NUMBER },
-            domain: { 
-              type: SchemaType.STRING,
-              enum: Object.values(Domain),
-              format: 'enum',
-            },
-            summary: { type: SchemaType.STRING },
-            requirements: {
-              type: SchemaType.ARRAY,
-              items: {
-                type: SchemaType.OBJECT,
-                properties: {
-                  name: { type: SchemaType.STRING },
-                  met_status: { 
-                    type: SchemaType.STRING,
-                    enum: Object.values(MetStatus),
-                    format: 'enum',
-                  },
-                  reasoning: { type: SchemaType.STRING }
-                },
-                required: ['name', 'met_status', 'reasoning']
-              }
-            }
-          },
-          required: ['score', 'domain', 'requirements']
-        }
-      }
-    });
 
     const prompt = `
       You are an expert technical recruiter. Analyze the following job description against the provided CV.
@@ -85,10 +49,42 @@ export class GeminiProvider extends LlmProvider {
     `;
 
     try {
-      const result = await genModel.generateContent(prompt);
-      const response = result.response;
-      const text = response.text();
-      return JSON.parse(text) as JobAnalysis;
+      const response = await this.ai.models.generateContent({
+        model,
+        contents: prompt,
+        config: {
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              score: { type: Type.NUMBER },
+              domain: { 
+                type: Type.STRING,
+                enum: Object.values(Domain),
+              },
+              summary: { type: Type.STRING },
+              requirements: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    name: { type: Type.STRING },
+                    met_status: { 
+                      type: Type.STRING,
+                      enum: Object.values(MetStatus),
+                    },
+                    reasoning: { type: Type.STRING }
+                  },
+                  required: ['name', 'met_status', 'reasoning']
+                }
+              }
+            },
+            required: ['score', 'domain', 'requirements']
+          }
+        }
+      });
+
+      return JSON.parse(response.text || '{}') as JobAnalysis;
     } catch (error) {
       this.logger.error(`Error generating content with Gemini: ${error.message}`);
       throw error;

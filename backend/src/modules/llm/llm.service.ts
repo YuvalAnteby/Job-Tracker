@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+﻿import { Injectable, Logger } from '@nestjs/common';
 import { SettingsService } from '../settings/settings.service';
 import { GeminiProvider } from './providers/gemini.provider';
 import { JobAnalysis } from './interfaces/job-analysis.interface';
@@ -14,7 +14,7 @@ export class LlmService {
 
   async analyzeJob(jobDescription: string): Promise<JobAnalysis> {
     const providerName = await this.settingsService.get<string>('llm_provider', 'gemini');
-    const model = await this.settingsService.get<string>('llm_model', 'gemini-1.5-flash');
+    const model = await this.settingsService.get<string>('llm_model', 'gemini-2.5-flash');
     const cvText = await this.settingsService.get<string>('master_cv_cached_text', '');
 
     if (!cvText) {

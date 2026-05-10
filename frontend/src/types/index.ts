@@ -1,4 +1,4 @@
-export enum JobStatus {
+﻿export enum JobStatus {
   ACTIVE = 'ACTIVE',
   INACTIVE = 'INACTIVE',
   APPLIED = 'APPLIED',
@@ -22,14 +22,14 @@ export enum MetStatus {
 
 export interface JobRequirement {
   id: string;
-  requirement: string;
-  reason: string;
-  status: MetStatus;
+  name: string;
+  reasoning: string;
+  met_status: MetStatus;
 }
 
 export interface Job {
   id: string;
-  company: string;
+  company_name: string;
   title: string;
   url: string;
   description: string;
@@ -57,7 +57,7 @@ export interface Job {
   
   requirements: JobRequirement[];
   
-  created_at: string;
+  added_at: string;
   updated_at: string;
 }
 

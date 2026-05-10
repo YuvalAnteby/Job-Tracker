@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+﻿import React, { useMemo, useState } from 'react';
 import {
   createColumnHelper,
   flexRender,
@@ -47,7 +47,7 @@ export const Dashboard: React.FC = () => {
         />
       ),
     }),
-    columnHelper.accessor('company', {
+    columnHelper.accessor('company_name', {
       header: 'Company',
       cell: info => <span className="font-semibold text-gray-900 dark:text-white">{info.getValue()}</span>,
     }),
@@ -67,9 +67,9 @@ export const Dashboard: React.FC = () => {
       header: 'Status',
       cell: info => <StatusBadge status={info.getValue()} />,
     }),
-    columnHelper.accessor('created_at', {
+    columnHelper.accessor('added_at', {
       header: 'Date Added',
-      cell: info => <span className="text-gray-500 dark:text-slate-400 text-sm">{format(new Date(info.getValue()), 'MMM d, yyyy')}</span>,
+      cell: info => <span className="text-gray-500 dark:text-slate-400 text-sm">{info.getValue() ? format(new Date(info.getValue()), 'MMM d, yyyy') : '-'}</span>,
     }),
     columnHelper.display({
       id: 'actions',
@@ -166,8 +166,8 @@ export const Dashboard: React.FC = () => {
                         <div className="flex items-center space-x-1">
                           {flexRender(header.column.columnDef.header, header.getContext())}
                           {{
-                            asc: ' 🔼',
-                            desc: ' 🔽',
+                            asc: ' ðŸ”¼',
+                            desc: ' ðŸ”½',
                           }[header.column.getIsSorted() as string] ?? null}
                         </div>
                       </th>
