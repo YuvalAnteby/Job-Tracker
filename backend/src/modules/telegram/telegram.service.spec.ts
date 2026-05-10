@@ -50,7 +50,7 @@ describe('TelegramService', () => {
       await service.onHelp(mockContext);
       expect(mockContext.reply).toHaveBeenCalledWith(
         expect.stringContaining('Available Commands'),
-        expect.objectContaining({ parse_mode: 'Markdown' }),
+        expect.objectContaining({ parse_mode: 'HTML' }),
       );
     });
   });

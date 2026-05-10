@@ -18,7 +18,7 @@ export class TelegramService {
   @Help()
   async onHelp(ctx: Context): Promise<void> {
     const helpMessage = `
-🛠️ *Available Commands:*
+🛠️ <b>Available Commands:</b>
 
 /start - Welcome message
 /help - Show this help message
@@ -26,9 +26,9 @@ export class TelegramService {
 /jobs [n] - List last n jobs (default 5)
 /applicable - List jobs marked as applicable
 /gap [domain] - Trigger gap summary generation
-/status <id_prefix> - Get status of a specific job
+/status &lt;id_prefix&gt; - Get status of a specific job
     `;
-    await ctx.reply(helpMessage, { parse_mode: 'Markdown' });
+    await ctx.reply(helpMessage, { parse_mode: 'HTML' });
   }
 
   @Command('add')

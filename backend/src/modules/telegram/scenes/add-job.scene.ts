@@ -107,20 +107,21 @@ export class AddJobScene {
         .join(', ');
 
       const response = `
-✅ *Added Successfully!*
+✅ <b>Added Successfully!</b>
 
-🏢 *Company:* ${job.company_name}
-📝 *Title:* ${job.title}
-⭐ *Score:* ${job.llm_score}/100
-🌐 *Domain:* ${job.domain}
-✅ *Applicable:* ${job.llm_is_applicable ? 'YES' : 'NO'}
+🏢 <b>Company:</b> ${job.company_name}
+📝 <b>Title:</b> ${job.title}
+⭐ <b>Score:</b> ${job.llm_score}/100
+🌐 <b>Domain:</b> ${job.domain}
+✅ <b>Applicable:</b> ${job.llm_is_applicable ? 'YES' : 'NO'}
 
-🔴 *Top Gaps:* ${missingRequirements || 'None identified'}
+🔴 <b>Top Gaps:</b> ${missingRequirements || 'None identified'}
 
-🔗 [View Job Details](http://localhost:3000/jobs/${job.id})
+🔗 <a href="${job.url}">View Job Posting</a>
+📊 <a href="http://localhost:3000/">Open Job Tracker Dashboard</a>
       `;
 
-      await ctx.reply(response, { parse_mode: 'Markdown' });
+      await ctx.reply(response, { parse_mode: 'HTML' });
     } catch (error) {
       this.logger.error(`Failed to create job: ${error}`);
       await ctx.reply(`❌ Failed to add job: ${error.message || 'Unknown error'}`);
