@@ -11,7 +11,10 @@ export class SettingsController {
 
   @Get()
   @ApiOperation({ summary: 'Get all settings' })
-  @ApiResponse({ status: 200, description: 'Return all settings as a key-value object.' })
+  @ApiResponse({
+    status: 200,
+    description: 'Return all settings as a key-value object.',
+  })
   async getAll() {
     return this.settingsService.getAll();
   }
@@ -29,7 +32,7 @@ export class SettingsController {
   @Post('cv/refresh')
   @ApiOperation({ summary: 'Refresh master CV text' })
   @ApiResponse({ status: 200, description: 'CV refreshed successfully.' })
-  async refreshCv() {
+  refreshCv() {
     // TODO: Implement CV refresh logic (fetch from URL, extract text)
     this.logger.log('CV refresh triggered (stub)');
     return { message: 'CV refresh triggered' };

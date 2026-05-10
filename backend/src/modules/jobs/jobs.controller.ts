@@ -19,7 +19,10 @@ export class JobsController {
 
   @Post()
   @ApiOperation({ summary: 'Create (ingest) a new job' })
-  @ApiResponse({ status: 201, description: 'Job successfully ingested and analyzed.' })
+  @ApiResponse({
+    status: 201,
+    description: 'Job successfully ingested and analyzed.',
+  })
   @ApiResponse({ status: 409, description: 'Job URL already exists.' })
   create(@Body() createJobDto: CreateJobDto) {
     return this.jobsService.create(createJobDto);

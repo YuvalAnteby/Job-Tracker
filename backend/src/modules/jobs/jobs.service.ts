@@ -1,4 +1,9 @@
-import { Injectable, ConflictException, NotFoundException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  ConflictException,
+  NotFoundException,
+  Logger,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Job } from './entities/job.entity';
@@ -29,16 +34,26 @@ export class JobsService {
     });
 
     if (existingJob) {
-      throw new ConflictException(`Job with URL ${createJobDto.url} already exists.`);
+      throw new ConflictException(
+        `Job with URL ${createJobDto.url} already exists.`,
+      );
     }
 
     // 2. LLM Analysis
-    this.logger.log(`Analyzing job from ${createJobDto.company_name}: ${createJobDto.title}`);
+    this.logger.log(
+      `Analyzing job from ${createJobDto.company_name}: ${createJobDto.title}`,
+    );
     const analysis = await this.llmService.analyzeJob(createJobDto.description);
 
     // 3. Application logic
-    const scoreThreshold = await this.settingsService.get<number>('score_threshold', 70);
-    const applicableDomains = await this.settingsService.get<string[]>('applicable_domains', ['BACKEND', 'FULLSTACK']);
+    const scoreThreshold = await this.settingsService.get<number>(
+      'score_threshold',
+      70,
+    );
+    const applicableDomains = await this.settingsService.get<string[]>(
+      'applicable_domains',
+      ['BACKEND', 'FULLSTACK'],
+    );
 
     const isApplicableByScore = analysis.score >= scoreThreshold;
     const isApplicableByDomain = applicableDomains.includes(analysis.domain);
@@ -50,14 +65,16 @@ export class JobsService {
       domain: analysis.domain, // Default domain is LLM domain
       llm_summary: analysis.summary,
       llm_is_applicable: isApplicableByScore && isApplicableByDomain,
-      posted_at: createJobDto.posted_at ? new Date(createJobDto.posted_at) : null,
-      requirements: analysis.requirements.map((req, index) => 
+      posted_at: createJobDto.posted_at
+        ? new Date(createJobDto.posted_at)
+        : null,
+      requirements: analysis.requirements.map((req, index) =>
         this.requirementRepository.create({
           name: req.name,
           met_status: req.met_status,
           reasoning: req.reasoning,
           order: index,
-        })
+        }),
       ),
     });
 
@@ -86,10 +103,10 @@ export class JobsService {
 
   async update(id: string, updateJobDto: UpdateJobDto) {
     const job = await this.findOne(id);
-    
+
     // Merge updates
     Object.assign(job, updateJobDto);
-    
+
     return this.jobRepository.save(job);
   }
 

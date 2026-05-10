@@ -1,6 +1,12 @@
 import { PartialType } from '@nestjs/swagger';
 import { CreateJobDto } from './create-job.dto';
-import { IsEnum, IsOptional, IsNumber, IsBoolean, IsString } from 'class-validator';
+import {
+  IsEnum,
+  IsOptional,
+  IsNumber,
+  IsBoolean,
+  IsString,
+} from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { JobStatus } from '../enums/job-status.enum';
 import { Domain } from '../enums/domain.enum';

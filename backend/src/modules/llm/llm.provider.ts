@@ -1,4 +1,8 @@
-import { JobAnalysis } from './interfaces/job-analysis.interface';
+import {
+  JobAnalysis,
+  GapSummaryResult,
+  JobSummaryInput,
+} from './interfaces/job-analysis.interface';
 
 export abstract class LlmProvider {
   abstract analyzeJob(
@@ -6,4 +10,10 @@ export abstract class LlmProvider {
     cvText: string,
     model?: string,
   ): Promise<JobAnalysis>;
+
+  abstract generateGapSummary(
+    jobs: JobSummaryInput[],
+    cvText: string,
+    model?: string,
+  ): Promise<GapSummaryResult>;
 }

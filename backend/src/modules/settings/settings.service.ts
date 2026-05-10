@@ -1,4 +1,4 @@
-﻿import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
+import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Setting } from './entities/setting.entity';
@@ -16,7 +16,7 @@ export class SettingsService implements OnModuleInit {
     await this.ensureDefaultSettings();
   }
 
-  async get<T = any>(key: string, defaultValue?: T): Promise<T> {
+  async get<T = unknown>(key: string, defaultValue?: T): Promise<T> {
     const setting = await this.settingRepository.findOne({ where: { key } });
     if (!setting) {
       return defaultValue as T;
@@ -24,7 +24,7 @@ export class SettingsService implements OnModuleInit {
     return setting.value as T;
   }
 
-  async set(key: string, value: any): Promise<void> {
+  async set(key: string, value: unknown): Promise<void> {
     let setting = await this.settingRepository.findOne({ where: { key } });
     if (!setting) {
       setting = this.settingRepository.create({ key, value });
@@ -34,21 +34,40 @@ export class SettingsService implements OnModuleInit {
     await this.settingRepository.save(setting);
   }
 
-  async getAll(): Promise<Record<string, any>> {
+  async getAll(): Promise<Record<string, unknown>> {
     const settings = await this.settingRepository.find();
-    return settings.reduce((acc, curr) => {
-      acc[curr.key] = curr.value;
-      return acc;
-    }, {} as Record<string, any>);
+    return settings.reduce(
+      (acc, curr) => {
+        acc[curr.key] = curr.value;
+        return acc;
+      },
+      {} as Record<string, unknown>,
+    );
   }
 
   private async ensureDefaultSettings() {
-    const defaults: Record<string, any> = {
+    const defaults: Record<string, unknown> = {
       score_threshold: 70,
       applicable_domains: ['BACKEND', 'FULLSTACK'],
       domain_keywords: {
-        ML: ['machine learning', 'deep learning', 'llm', 'nlp', 'pytorch', 'tensorflow', 'mlops'],
-        DEVOPS: ['kubernetes', 'terraform', 'ci/cd', 'devops', 'sre', 'infrastructure', 'helm'],
+        ML: [
+          'machine learning',
+          'deep learning',
+          'llm',
+          'nlp',
+          'pytorch',
+          'tensorflow',
+          'mlops',
+        ],
+        DEVOPS: [
+          'kubernetes',
+          'terraform',
+          'ci/cd',
+          'devops',
+          'sre',
+          'infrastructure',
+          'helm',
+        ],
         BACKEND: ['backend', 'back-end', 'server-side', 'api', 'microservices'],
         FULLSTACK: ['full stack', 'fullstack', 'full-stack'],
       },

@@ -13,3 +13,22 @@ export interface JobAnalysis {
   summary: string;
   requirements: LlmRequirement[];
 }
+
+export interface JobSummaryInput {
+  title: string;
+  company_name: string;
+  domain: Domain;
+  requirements: LlmRequirement[];
+}
+
+export interface GapSummaryResult {
+  domains: Record<
+    string,
+    {
+      missing_skills: string[];
+      partially_known: string[];
+      gaps_detail: string;
+    }
+  >;
+  overall_top_gaps: string[];
+}
