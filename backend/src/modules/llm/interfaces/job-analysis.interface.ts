@@ -12,6 +12,8 @@ export interface JobAnalysis {
   domain: Domain;
   summary: string;
   requirements: LlmRequirement[];
+  company_name?: string;
+  title?: string;
 }
 
 export interface JobSummaryInput {

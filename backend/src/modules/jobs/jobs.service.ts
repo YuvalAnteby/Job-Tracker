@@ -40,9 +40,7 @@ export class JobsService {
     }
 
     // 2. LLM Analysis
-    this.logger.log(
-      `Analyzing job from ${createJobDto.company_name}: ${createJobDto.title}`,
-    );
+    this.logger.log(`Analyzing job from URL: ${createJobDto.url}`);
     const analysis = await this.llmService.analyzeJob(createJobDto.description);
 
     // 3. Application logic
@@ -58,8 +56,20 @@ export class JobsService {
     const isApplicableByScore = analysis.score >= scoreThreshold;
     const isApplicableByDomain = applicableDomains.includes(analysis.domain);
 
+    const company_name =
+      createJobDto.company_name === 'skip'
+        ? analysis.company_name || 'Unknown Company'
+        : createJobDto.company_name;
+
+    const title =
+      createJobDto.title === 'skip'
+        ? analysis.title || 'Unknown Title'
+        : createJobDto.title;
+
     const job = this.jobRepository.create({
       ...createJobDto,
+      company_name,
+      title,
       llm_score: analysis.score,
       llm_domain: analysis.domain,
       domain: analysis.domain, // Default domain is LLM domain

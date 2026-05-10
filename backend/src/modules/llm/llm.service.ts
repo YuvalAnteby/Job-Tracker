@@ -69,4 +69,17 @@ export class LlmService {
 
     throw new Error(`Unsupported LLM provider: ${providerName}`);
   }
+
+  async extractTextFromImage(base64Image: string): Promise<string> {
+    const providerName = await this.settingsService.get<string>(
+      'llm_provider',
+      'gemini',
+    );
+
+    if (providerName === 'gemini') {
+      return this.geminiProvider.extractTextFromImage(base64Image);
+    }
+
+    throw new Error(`Unsupported LLM provider for vision: ${providerName}`);
+  }
 }

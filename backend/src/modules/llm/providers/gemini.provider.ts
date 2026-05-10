@@ -46,10 +46,11 @@ export class GeminiProvider extends LlmProvider {
       ${jobDescription}
       
       Tasks:
-      1. Assign a fit score (0-100) based on how well the candidate's experience matches the job requirements.
-      2. Classify the job into one of these domains: ${Object.values(Domain).join(', ')}.
-      3. Provide a concise 2-3 sentence summary of the job and why it's a good/bad fit.
-      4. List the key requirements of the job and whether they are met by the candidate, with brief reasoning.
+      1. Extract the company name and job title from the description.
+      2. Assign a fit score (0-100) based on how well the candidate's experience matches the job requirements.
+      3. Classify the job into one of these domains: ${Object.values(Domain).join(', ')}.
+      4. Provide a concise 2-3 sentence summary of the job and why it's a good/bad fit.
+      5. List the key requirements of the job and whether they are met by the candidate, with brief reasoning.
       
       Respond only with a valid JSON object matching the requested schema.
     `;
@@ -63,6 +64,8 @@ export class GeminiProvider extends LlmProvider {
           responseSchema: {
             type: Type.OBJECT,
             properties: {
+              company_name: { type: Type.STRING },
+              title: { type: Type.STRING },
               score: { type: Type.NUMBER },
               domain: {
                 type: Type.STRING,
@@ -85,7 +88,7 @@ export class GeminiProvider extends LlmProvider {
                 },
               },
             },
-            required: ['score', 'domain', 'requirements', 'summary'],
+            required: ['company_name', 'title', 'score', 'domain', 'requirements', 'summary'],
           },
         },
       });
@@ -175,6 +178,40 @@ export class GeminiProvider extends LlmProvider {
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
       this.logger.error(`Error generating gap summary with Gemini: ${message}`);
+      throw error;
+    }
+  }
+
+  async extractTextFromImage(base64Image: string): Promise<string> {
+    if (!this.ai) {
+      throw new Error('Gemini AI not initialized (missing API key)');
+    }
+
+    try {
+      const response = await this.ai.models.generateContent({
+        model: 'gemini-1.5-flash', // Vision works well with flash
+        contents: [
+          {
+            role: 'user',
+            parts: [
+              {
+                text: 'Extract all the text from this job posting image. Return only the extracted text, maintaining the original structure as much as possible.',
+              },
+              {
+                inlineData: {
+                  mimeType: 'image/jpeg',
+                  data: base64Image,
+                },
+              },
+            ],
+          },
+        ],
+      });
+
+      return response.text || '';
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Error extracting text from image with Gemini: ${message}`);
       throw error;
     }
   }
