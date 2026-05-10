@@ -1,0 +1,8 @@
+export enum Domain {
+  BACKEND = 'BACKEND',
+  FULLSTACK = 'FULLSTACK',
+  ML = 'ML',
+  DEVOPS = 'DEVOPS',
+  OTHER = 'OTHER',
+  INTERESTED = 'INTERESTED',
+}

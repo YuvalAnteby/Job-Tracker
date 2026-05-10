@@ -1,0 +1,62 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: jobtracker-db
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-jobtracker}
+      POSTGRES_USER: ${POSTGRES_USER:-jobtracker}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-jobtracker}
+    ports:
+      - "5432:5432"
+    networks:
+      - jobtracker-net
+
+  redis:
+    image: redis:7-alpine
+    container_name: jobtracker-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - jobtracker-net
+
+  backend:
+    build:
+      context: ../backend
+      dockerfile: ../infra/Dockerfile.backend
+    container_name: jobtracker-backend
+    environment:
+      - ENV=dev
+      - CHOKIDAR_USEPOLLING=true
+      - WATCHPACK_POLLING=true
+    depends_on:
+      - postgres
+      - redis
+    env_file:
+      - .env
+    ports:
+      - "3000:3000"
+    networks:
+      - jobtracker-net
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: ../infra/Dockerfile.frontend
+    container_name: jobtracker-frontend
+    environment:
+      - ENV=dev
+      - CHOKIDAR_USEPOLLING=true
+      - WATCHPACK_POLLING=true
+    ports:
+      - "5173:5173"
+    networks:
+      - jobtracker-net
+
+networks:
+  jobtracker-net:
+    driver: bridge
+
+volumes:
+  pgdata:
