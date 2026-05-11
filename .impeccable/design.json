@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-05-11T00:00:00Z",
+  "title": "Design System: Job Tracker",
+  "extensions": {
+    "colorMeta": {
+      "primary": { "role": "primary", "displayName": "Action Blue", "canonical": "#2563eb", "tonalRamp": [] }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Page headers and modal titles." },
+      "body": { "displayName": "Body", "purpose": "General content." }
+    },
+    "shadows": [
+      { "name": "container-lift", "value": "0 1px 3px rgba(0,0,0,0.1)", "purpose": "Standard resting state for cards, modals, and persistent headers." }
+    ],
+    "motion": [],
+    "breakpoints": [
+      { "name": "md", "value": "768px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Badge",
+      "kind": "chip",
+      "refersTo": "badge",
+      "description": "Used for statuses and score tags.",
+      "html": "<span class=\"ds-badge\">Active</span>",
+      "css": ".ds-badge { display: inline-flex; align-items: center; padding: 0.125rem 0.625rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 500; background-color: #dcfce7; color: #166534; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Flow Engine",
+    "overview": "The interface is designed to be seamless, minimal, and frictionless. As an internal personal tool, it avoids the bloated patterns common to SaaS dashboards and sticks strictly to utility. Data stands out while the UI recedes, enabling fast assessment of CV gaps. The tone is confident and professional without being heavy.",
+    "keyCharacteristics": [
+      "Content-first and highly readable.",
+      "Functional and tactical application of colors.",
+      "Soft, approachable surfaces inside a structured, layered hierarchy."
+    ],
+    "rules": [
+      { "name": "The Tool Over Toy Rule", "body": "UI Chrome remains neutral. Saturated colors are reserved exclusively for the data itself.", "section": "colors" }
+    ],
+    "dos": [
+      "Do rely on the semantic colors strictly for data values.",
+      "Do keep components approachable with padding.",
+      "Do utilize the system's Layered elevation schema to separate cards from the page background."
+    ],
+    "donts": [
+      "Don't use cluttered SaaS templates or excessive padding.",
+      "Don't implement corporate enterprise software patterns.",
+      "Don't use heavy, slow-loading decorative elements like background gradients or glassmorphism."
+    ]
+  }
+}
