@@ -39,13 +39,13 @@ export const Modal: React.FC<ModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
       {/* Backdrop */}
       <div 
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
+        className="absolute inset-0 bg-slate-950/50 backdrop-blur-sm animate-in fade-in duration-200"
         onClick={onClose}
       />
       
       {/* Modal Content */}
       <div className={cn(
-        "relative w-full max-w-2xl bg-white dark:bg-slate-900 rounded-xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden animate-in zoom-in-95 duration-200",
+        "relative w-full max-w-2xl bg-white dark:bg-slate-950 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.1),0_8px_24px_rgba(0,0,0,0.1)] flex flex-col max-h-[90vh] overflow-hidden animate-in zoom-in-95 duration-200",
         className
       )}>
         {/* Header */}

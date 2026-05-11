@@ -1,5 +1,4 @@
 ﻿import React, { useState } from 'react';
-import { Modal } from '../shared/Modal';
 import { Job, JobStatus, Domain, MetStatus } from '../../types';
 import { useJob, useUpdateJob, useDeleteJob } from '../../hooks/useJobs';
 import { ScoreBadge, DomainTag, StatusBadge } from '../shared/Badges';
@@ -12,15 +11,15 @@ import {
   ChevronUp, 
   Trash2,
   Loader2,
-  Save
+  Save,
+  X
 } from 'lucide-react';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import { cn } from '../../utils/cn';
 
-interface JobDetailModalProps {
+interface JobDetailPanelProps {
   jobId: string | null;
-  isOpen: boolean;
   onClose: () => void;
 }
 
@@ -59,7 +58,7 @@ const RequirementRow: React.FC<{ requirement: any }> = ({ requirement }) => {
   );
 };
 
-export const JobDetailModal: React.FC<JobDetailModalProps> = ({ jobId, isOpen, onClose }) => {
+export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({ jobId, onClose }) => {
   const { data: job, isLoading } = useJob(jobId || '');
   const updateJob = useUpdateJob();
   const deleteJob = useDeleteJob();
@@ -110,16 +109,27 @@ export const JobDetailModal: React.FC<JobDetailModalProps> = ({ jobId, isOpen, o
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={isLoading ? 'Loading...' : `${job?.company_name} â€” ${job?.title}`}>
+    <div className="bg-gray-50/50 dark:bg-slate-900/50 p-6 animate-in slide-in-from-top-2 duration-200">
+      <div className="flex justify-between items-center mb-6">
+        <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+          {isLoading ? 'Loading...' : `${job?.company_name} — ${job?.title}`}
+        </h3>
+        <button
+          onClick={onClose}
+          className="text-gray-400 hover:text-gray-600 dark:hover:text-slate-200 transition-colors p-1"
+        >
+          <X className="w-5 h-5" />
+        </button>
+      </div>
       {isLoading || !job ? (
-        <div className="flex flex-col items-center justify-center py-20 space-y-4">
-          <Loader2 className="h-10 w-10 text-blue-600 animate-spin" />
+        <div className="flex flex-col items-center justify-center py-10 space-y-4">
+          <Loader2 className="h-8 w-8 text-blue-600 animate-spin" />
           <span className="text-gray-500 dark:text-slate-400 font-medium">Fetching job details...</span>
         </div>
       ) : (
-        <div className="space-y-8">
+        <div className="space-y-6">
           {/* Header Info */}
-          <div className="flex flex-wrap items-center justify-between gap-4 bg-gray-50 dark:bg-slate-800/50 p-4 rounded-xl">
+          <div className="flex flex-wrap items-center justify-between gap-4 bg-white dark:bg-slate-950 p-4 rounded-xl border border-gray-100 dark:border-slate-800">
             <div className="flex items-center space-x-4">
               <ScoreBadge score={job.effective_score} hasOverride={!!job.score_override} size="lg" />
               <DomainTag domain={job.effective_domain} />
@@ -177,7 +187,7 @@ export const JobDetailModal: React.FC<JobDetailModalProps> = ({ jobId, isOpen, o
           </div>
 
           {/* Overrides */}
-          <div className="space-y-4 p-6 bg-gray-50 dark:bg-slate-800/50 rounded-xl border border-gray-200 dark:border-slate-800">
+          <div className="space-y-4 p-6 bg-white dark:bg-slate-950 rounded-xl border border-gray-200 dark:border-slate-800">
             <h4 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">Manual Overrides</h4>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div>
@@ -253,6 +263,6 @@ export const JobDetailModal: React.FC<JobDetailModalProps> = ({ jobId, isOpen, o
           </div>
         </div>
       )}
-    </Modal>
+    </div>
   );
 };

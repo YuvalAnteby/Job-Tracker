@@ -11,9 +11,10 @@ import { Job, JobFilters, JobStatus } from '../types';
 import { useJobs, useUpdateJobStatus, useDeleteJob } from '../hooks/useJobs';
 import { ScoreBadge, DomainTag, StatusBadge } from '../components/shared/Badges';
 import { FilterPanel } from '../components/dashboard/FilterPanel';
-import { JobDetailModal } from '../components/dashboard/JobDetailModal';
-import { Eye, CheckCircle, XCircle, Trash2, MoreVertical } from 'lucide-react';
+import { JobDetailPanel } from '../components/dashboard/JobDetailPanel';
+import { Eye, CheckCircle, XCircle, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
 import { format } from 'date-fns';
+import { cn } from '../utils/cn';
 
 const columnHelper = createColumnHelper<Job>();
 
@@ -76,14 +77,20 @@ export const Dashboard: React.FC = () => {
       header: 'Actions',
       cell: ({ row }) => {
         const job = row.original;
+        const isExpanded = selectedJobId === job.id;
         return (
           <div className="flex items-center space-x-2" onClick={(e) => e.stopPropagation()}>
             <button 
-              onClick={() => setSelectedJobId(job.id)}
-              className="p-1 hover:bg-gray-100 dark:hover:bg-slate-800 rounded transition-colors text-gray-500 dark:text-slate-400" 
-              title="View Detail"
+              onClick={() => setSelectedJobId(isExpanded ? null : job.id)}
+              className={cn(
+                "p-1 rounded transition-colors",
+                isExpanded 
+                  ? "bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300"
+                  : "hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-500 dark:text-slate-400"
+              )}
+              title={isExpanded ? "Close Detail" : "View Detail"}
             >
-              <Eye className="h-4 w-4" />
+              {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
             </button>
             <button 
               onClick={() => updateStatus.mutate({ id: job.id, status: JobStatus.APPLIED })}
@@ -151,10 +158,10 @@ export const Dashboard: React.FC = () => {
           </div>
         )}
 
-        <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-lg shadow-sm overflow-hidden">
+        <div className="bg-white dark:bg-slate-900 shadow-[0_1px_3px_rgba(0,0,0,0.1)] rounded-xl overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
-              <thead className="bg-gray-50 dark:bg-slate-800/50 border-b border-gray-200 dark:border-slate-800">
+              <thead className="bg-gray-50/80 dark:bg-slate-800/80 border-b border-gray-100 dark:border-slate-800">
                 {table.getHeaderGroups().map(headerGroup => (
                   <tr key={headerGroup.id}>
                     {headerGroup.headers.map(header => (
@@ -180,7 +187,7 @@ export const Dashboard: React.FC = () => {
                   <tr>
                     <td colSpan={columns.length} className="px-6 py-12 text-center text-gray-500 dark:text-slate-400">
                       <div className="flex flex-col items-center space-y-2">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                        <div className="animate-spin rounded-full h-8 w-8 border-2 border-r-blue-600 border-indigo-200"></div>
                         <span>Loading jobs...</span>
                       </div>
                     </td>
@@ -193,17 +200,25 @@ export const Dashboard: React.FC = () => {
                   </tr>
                 ) : (
                   table.getRowModel().rows.map(row => (
-                    <tr 
-                      key={row.id} 
-                      onClick={() => setSelectedJobId(row.original.id)}
-                      className={`hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer ${row.getIsSelected() ? 'bg-blue-50/50 dark:bg-blue-900/20' : ''}`}
-                    >
-                      {row.getVisibleCells().map(cell => (
-                        <td key={cell.id} className="px-6 py-4 text-sm text-gray-600 dark:text-slate-300 whitespace-nowrap">
-                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                        </td>
-                      ))}
-                    </tr>
+                    <React.Fragment key={row.id}>
+                      <tr 
+                        onClick={() => setSelectedJobId(selectedJobId === row.original.id ? null : row.original.id)}
+                        className={`hover:bg-gray-50/80 dark:hover:bg-slate-800/80 transition-colors cursor-pointer ${selectedJobId === row.original.id ? 'bg-blue-50/30 dark:bg-blue-900/10' : ''}`}
+                      >
+                        {row.getVisibleCells().map(cell => (
+                          <td key={cell.id} className="px-6 py-4 text-sm text-gray-600 dark:text-slate-300 whitespace-nowrap">
+                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                          </td>
+                        ))}
+                      </tr>
+                      {selectedJobId === row.original.id && (
+                        <tr>
+                          <td colSpan={columns.length} className="px-0 py-0 border-t border-gray-100 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-900/50">
+                             <JobDetailPanel jobId={row.original.id} onClose={() => setSelectedJobId(null)} />
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
                   ))
                 )}
               </tbody>
@@ -211,12 +226,6 @@ export const Dashboard: React.FC = () => {
           </div>
         </div>
       </div>
-
-      <JobDetailModal 
-        jobId={selectedJobId} 
-        isOpen={!!selectedJobId} 
-        onClose={() => setSelectedJobId(null)} 
-      />
     </div>
   );
 };
