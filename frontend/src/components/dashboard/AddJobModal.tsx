@@ -123,7 +123,7 @@ export const AddJobModal: React.FC<AddJobModalProps> = ({ isOpen, onClose }) => 
                 Analyzing with AI...
               </>
             ) : (
-              'Analyze â†’'
+              'Analyze'
             )}
           </button>
         </div>
