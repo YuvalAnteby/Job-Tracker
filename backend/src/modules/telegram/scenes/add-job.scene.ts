@@ -118,7 +118,7 @@ export class AddJobScene {
 🔴 <b>Top Gaps:</b> ${missingRequirements || 'None identified'}
 
 🔗 <a href="${job.url}">View Job Posting</a>
-📊 <a href="http://localhost:3000/">Open Job Tracker Dashboard</a>
+📊 <a href="${process.env.FRONTEND_URL || 'http://yuval-pc:5173'}/">Open Job Tracker Dashboard</a>
       `;
 
       await ctx.reply(response, { parse_mode: 'HTML' });

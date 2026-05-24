@@ -7,8 +7,12 @@ async function bootstrap() {
   const logger = new Logger('Bootstrap');
   const app = await NestFactory.create(AppModule);
 
+  const allowedOrigins = process.env.ALLOWED_ORIGINS 
+    ? process.env.ALLOWED_ORIGINS.split(',') 
+    : [process.env.FRONTEND_URL || 'http://localhost:5173'];
+
   app.enableCors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    origin: allowedOrigins,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
   });
@@ -34,9 +38,9 @@ async function bootstrap() {
   const port = process.env.PORT || 3000;
   await app.listen(port)
   .then(() => {
-    logger.verbose(`Application is running on: http://localhost:${port}/api`);
+    logger.verbose(`Application is running on: ${process.env.FRONTEND_URL ? process.env.FRONTEND_URL.replace('5173', port.toString()) : `http://localhost:${port}`}/api`);
     logger.verbose(
-      `Swagger documentation is available at: http://localhost:${port}/api/docs`,
+      `Swagger documentation is available at: ${process.env.FRONTEND_URL ? process.env.FRONTEND_URL.replace('5173', port.toString()) : `http://localhost:${port}`}/api/docs`,
     );
   })
   .catch((err) => {
