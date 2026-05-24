@@ -71,7 +71,7 @@ Backend receives POST /jobs
         ├─► If image → extract text via Gemini Vision
         │
         ├─► Fetch master CV text from settings
-        │   (cached in DB, sourced from Google Drive)
+        │   (cached in DB, sourced from Google Drive/Docs as raw text/markdown)
         │
         ├─► LLM Analysis (synchronous, ~3–8s)
         │     ├── Score (0–100)

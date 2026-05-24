@@ -7,10 +7,10 @@ import { MainLayout } from './components/layout/MainLayout';
 
 import { Dashboard } from './pages/Dashboard';
 import GapSummary from './pages/GapSummary/GapSummary';
+import Settings from './pages/Settings/Settings';
 
 // Placeholder components for routes
 const JobDetail = () => <div className="text-2xl font-bold">Job Detail</div>;
-const Settings = () => <div className="text-2xl font-bold">Settings</div>;
 const NotFound = () => <div className="text-2xl font-bold">404 - Not Found</div>;
 
 const queryClient = new QueryClient({

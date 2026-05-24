@@ -109,7 +109,8 @@ export class GeminiProvider extends LlmProvider {
     if (!this.ai) {
       throw new Error('Gemini AI not initialized (missing API key)');
     }
-
+    
+    this.logger.debug(`CV length: ${cvText.length} characters`);
     const jobsJson = JSON.stringify(jobs, null, 2);
 
     const prompt = `

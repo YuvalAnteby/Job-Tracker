@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
+import { Injectable, OnModuleInit, Logger, BadRequestException, InternalServerErrorException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Setting } from './entities/setting.entity';
@@ -45,6 +45,58 @@ export class SettingsService implements OnModuleInit {
     );
   }
 
+  async refreshCv(): Promise<{ message: string; cached_at: string }> {
+    const cvUrl = await this.get<string>('master_cv_url', '');
+
+    if (!cvUrl) {
+      throw new BadRequestException('Master CV URL is not configured in settings.');
+    }
+
+    try {
+      let fetchUrl = cvUrl;
+
+      // Auto-convert Google Docs edit URLs to direct text export URLs
+      if (cvUrl.includes('docs.google.com/document/d/')) {
+        const match = cvUrl.match(/\/d\/([a-zA-Z0-9-_]+)/);
+        if (match && match[1]) {
+          const docId = match[1];
+          fetchUrl = `https://docs.google.com/document/export?format=txt&id=${docId}`;
+        }
+      } 
+      // Auto-convert Google Drive file view URLs to direct download URLs
+      else if (cvUrl.includes('drive.google.com/file/d/')) {
+        const match = cvUrl.match(/\/d\/([a-zA-Z0-9-_]+)/);
+        if (match && match[1]) {
+          const fileId = match[1];
+          fetchUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
+        }
+      }
+
+      this.logger.log(`Fetching CV from: ${fetchUrl}`);
+      const response = await fetch(fetchUrl);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const text = await response.text();
+
+      if (!text || text.trim().length === 0) {
+        throw new Error('Fetched CV document is empty.');
+      }
+
+      const cachedAt = new Date().toISOString();
+      await this.set('master_cv_cached_text', text.trim());
+      await this.set('master_cv_cached_at', cachedAt);
+
+      this.logger.log('CV refreshed successfully');
+      return { message: 'CV refreshed successfully', cached_at: cachedAt };
+    } catch (error: any) {
+      this.logger.error(`CV refresh failed: ${error.message}`);
+      throw new InternalServerErrorException(`CV refresh failed: ${error.message}`);
+    }
+  }
+
   private async ensureDefaultSettings() {
     const defaults: Record<string, unknown> = {
       score_threshold: 70,
@@ -72,8 +124,11 @@ export class SettingsService implements OnModuleInit {
         FULLSTACK: ['full stack', 'fullstack', 'full-stack'],
       },
       llm_provider: 'gemini',
-      llm_model: 'gemini-2.5-flash',
+      llm_model: 'gemini-1.5-flash',
       telegram_allowed_chat_ids: [],
+      master_cv_url: '',
+      master_cv_cached_text: '',
+      master_cv_cached_at: '',
     };
 
     for (const [key, value] of Object.entries(defaults)) {

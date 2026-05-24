@@ -1,12 +1,10 @@
-import { Controller, Get, Body, Patch, Post, Logger } from '@nestjs/common';
+import { Controller, Get, Body, Patch, Post } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { SettingsService } from './settings.service';
 
 @ApiTags('settings')
 @Controller('settings')
 export class SettingsController {
-  private readonly logger = new Logger(SettingsController.name);
-
   constructor(private readonly settingsService: SettingsService) {}
 
   @Get()
@@ -32,9 +30,7 @@ export class SettingsController {
   @Post('cv/refresh')
   @ApiOperation({ summary: 'Refresh master CV text' })
   @ApiResponse({ status: 200, description: 'CV refreshed successfully.' })
-  refreshCv() {
-    // TODO: Implement CV refresh logic (fetch from URL, extract text)
-    this.logger.log('CV refresh triggered (stub)');
-    return { message: 'CV refresh triggered' };
+  async refreshCv() {
+    return this.settingsService.refreshCv();
   }
 }

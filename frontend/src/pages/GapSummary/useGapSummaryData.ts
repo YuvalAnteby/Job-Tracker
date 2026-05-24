@@ -14,8 +14,6 @@ interface UseGapSummaryDataReturn {
 }
 
 export function useGapSummaryData(domain?: Domain): UseGapSummaryDataReturn {
-  const queryClient = useQueryClient();
-
   const query = useQuery({
     queryKey: ['gap-summary', domain],
     queryFn: async () => {
@@ -38,7 +36,7 @@ export function useGapSummaryData(domain?: Domain): UseGapSummaryDataReturn {
       // We don't invalidate immediately because it's a background job
       // But maybe we can start polling or just let the user refresh
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast.error(error.message || 'Failed to trigger gap analysis');
     },
   });

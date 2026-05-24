@@ -13,13 +13,16 @@ Secrets (API keys, DB credentials, bot token) live in `.env` — these are start
 
 ### `master_cv_url`
 **Type:** `string`  
-**Example:** `"https://drive.google.com/uc?export=download&id=<file_id>"`
+**Example:** `"https://docs.google.com/document/d/<doc_id>/edit"` or `"https://drive.google.com/file/d/<file_id>/view"`
 
-The Google Drive "direct download" link to your CV file (plain text or PDF). To get this URL: File → Share → "Anyone with the link" → copy link → convert to `uc?export=download&id=...` format.
+The link to your CV. Supported formats:
+1. **Google Docs**: Just paste the standard share link. The backend auto-converts it to a `.txt` export.
+2. **Markdown/Text file in Google Drive**: Paste the share link. The backend auto-converts it to a direct download.
+3. **Raw URL**: Any URL that returns plain text or markdown directly.
 
 When `POST /settings/cv/refresh` is called:
-1. Backend fetches this URL
-2. If PDF → extracts text (via LLM or pdf-parse)
+1. Backend fetches this URL (applying auto-conversions for Drive/Docs)
+2. Content is retrieved as raw text/markdown
 3. Stores result in `master_cv_cached_text`
 4. Updates `master_cv_cached_at`
 
