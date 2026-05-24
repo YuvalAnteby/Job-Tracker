@@ -65,3 +65,5 @@ networks:
 
 volumes:
   pgdata:
+    name: infra_pgdata
+    external: true
