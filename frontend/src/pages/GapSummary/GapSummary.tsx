@@ -108,14 +108,13 @@ const GapSummary: React.FC = () => {
                       <h4 className="font-semibold text-gray-900 dark:text-white">Missing Skills</h4>
                     </div>
                     {data.missing_skills.length > 0 ? (
-                      <ul className="space-y-2">
+                      <div className="flex flex-wrap gap-2">
                         {data.missing_skills.map((skill) => (
-                          <li key={skill} className="flex items-start">
-                            <span className="h-1.5 w-1.5 rounded-full bg-red-500 mt-2 mr-2 flex-shrink-0" />
-                            <span className="text-gray-700 dark:text-slate-300">{skill}</span>
-                          </li>
+                          <span key={skill} className="px-2.5 py-1 rounded text-xs font-medium bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-400 border border-red-100 dark:border-red-500/20">
+                            {skill}
+                          </span>
                         ))}
-                      </ul>
+                      </div>
                     ) : (
                       <p className="text-sm text-gray-500 italic">No missing skills identified.</p>
                     )}
@@ -127,14 +126,13 @@ const GapSummary: React.FC = () => {
                       <h4 className="font-semibold text-gray-900 dark:text-white">Partial Knowledge</h4>
                     </div>
                     {data.partially_known.length > 0 ? (
-                      <ul className="space-y-2">
+                      <div className="flex flex-wrap gap-2">
                         {data.partially_known.map((skill) => (
-                          <li key={skill} className="flex items-start">
-                            <span className="h-1.5 w-1.5 rounded-full bg-yellow-500 mt-2 mr-2 flex-shrink-0" />
-                            <span className="text-gray-700 dark:text-slate-300">{skill}</span>
-                          </li>
+                          <span key={skill} className="px-2.5 py-1 rounded text-xs font-medium bg-yellow-50 text-yellow-700 dark:bg-yellow-500/10 dark:text-yellow-400 border border-yellow-100 dark:border-yellow-500/20">
+                            {skill}
+                          </span>
                         ))}
-                      </ul>
+                      </div>
                     ) : (
                       <p className="text-sm text-gray-500 italic">No partial skills identified.</p>
                     )}
@@ -151,21 +149,37 @@ const GapSummary: React.FC = () => {
               </div>
             ))}
 
-            <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-900/30 p-6">
-              <h3 className="font-bold text-blue-900 dark:text-blue-100 mb-4 flex items-center">
-                <CheckCircle2 className="h-5 w-5 mr-2" />
+            <div className="pt-8 mt-4 border-t border-gray-200 dark:border-slate-800">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-6 flex items-center">
+                <CheckCircle2 className="h-5 w-5 mr-2 text-blue-600 dark:text-blue-500" />
                 Overall Top Gaps (All Domains)
               </h3>
-              <div className="flex flex-wrap gap-2">
-                {summary.summary.overall_top_gaps.map((gap, index) => (
-                  <span 
-                    key={gap}
-                    className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-white dark:bg-slate-800 text-blue-800 dark:text-blue-200 border border-blue-200 dark:border-blue-800 shadow-sm"
-                  >
-                    <span className="text-blue-400 dark:text-blue-500 mr-1.5 font-bold">{index + 1}.</span>
-                    {gap}
-                  </span>
-                ))}
+              <div className="space-y-5">
+                {summary.summary.overall_top_gaps.map((gap, index) => {
+                  const colonIndex = gap.indexOf(':');
+                  // Find exactly where the prefix ends so we can bold it
+                  const hasPrefix = colonIndex > 0 && colonIndex < 80;
+                  
+                  return (
+                    <div key={index} className="flex items-start">
+                      <div className="flex-shrink-0 flex items-center justify-center h-6 w-6 rounded border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 text-gray-500 dark:text-slate-400 text-xs font-bold mr-4 mt-0.5">
+                        {index + 1}
+                      </div>
+                      <p className="text-gray-700 dark:text-slate-300 leading-relaxed text-sm">
+                        {hasPrefix ? (
+                          <>
+                            <strong className="font-semibold text-gray-900 dark:text-white">
+                              {gap.substring(0, colonIndex + 1)}
+                            </strong>
+                            {gap.substring(colonIndex + 1)}
+                          </>
+                        ) : (
+                          gap
+                        )}
+                      </p>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>

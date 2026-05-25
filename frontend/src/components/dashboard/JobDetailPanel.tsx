@@ -44,16 +44,20 @@ const RequirementRow: React.FC<{ requirement: any }> = ({ requirement }) => {
     <div className="border-b border-gray-100 dark:border-slate-800 last:border-0">
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full flex items-center justify-between py-3 hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors px-2 rounded-lg"
+        className="w-full flex items-start sm:items-center justify-between py-3 hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors px-3 sm:px-4 rounded-lg gap-2"
       >
-        <div className="flex items-center space-x-3 text-left">
-          {getIcon(requirement.met_status)}
+        <div className="flex items-start sm:items-center gap-3 text-left pr-2">
+          <div className="shrink-0 mt-0.5 sm:mt-0">
+            {getIcon(requirement.met_status)}
+          </div>
           <span className="font-medium text-gray-700 dark:text-slate-300">{requirement.name}</span>
         </div>
-        {isExpanded ? <ChevronUp className="h-4 w-4 text-gray-400 dark:text-slate-500" /> : <ChevronDown className="h-4 w-4 text-gray-400 dark:text-slate-500" />}
+        <div className="shrink-0 mt-1 sm:mt-0">
+          {isExpanded ? <ChevronUp className="h-4 w-4 text-gray-400 dark:text-slate-500" /> : <ChevronDown className="h-4 w-4 text-gray-400 dark:text-slate-500" />}
+        </div>
       </button>
       {isExpanded && (
-        <div className="pb-4 pl-10 pr-4 text-sm text-gray-600 dark:text-slate-400 animate-in fade-in slide-in-from-top-1">
+        <div className="pb-4 pl-10 sm:pl-12 pr-4 text-sm text-gray-600 dark:text-slate-400 animate-in fade-in slide-in-from-top-1">
           {requirement.reasoning}
         </div>
       )}
@@ -124,14 +128,14 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({ jobId, onClose }
   };
 
   return (
-    <div className="bg-gray-50/50 dark:bg-slate-900/50 p-6 animate-in slide-in-from-top-2 duration-200">
-      <div className="flex justify-between items-center mb-6">
-        <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+    <div className="bg-gray-50/50 dark:bg-slate-900/50 p-4 sm:p-6 animate-in slide-in-from-top-2 duration-200">
+      <div className="flex justify-between items-start sm:items-center mb-4 sm:mb-6">
+        <h3 className="text-lg font-bold text-gray-900 dark:text-white pr-4">
           {isLoading ? 'Loading...' : `${job?.company_name} — ${job?.title}`}
         </h3>
         <button
           onClick={onClose}
-          className="text-gray-400 hover:text-gray-600 dark:hover:text-slate-200 transition-colors p-1"
+          className="text-gray-400 hover:text-gray-600 dark:hover:text-slate-200 transition-colors p-1 shrink-0"
         >
           <X className="w-5 h-5" />
         </button>
@@ -144,40 +148,42 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({ jobId, onClose }
       ) : (
         <div className="space-y-6">
           {/* Header Info */}
-          <div className="flex flex-wrap items-center justify-between gap-4 bg-white dark:bg-slate-950 p-4 rounded-xl border border-gray-100 dark:border-slate-800">
-            <div className="flex items-center space-x-4">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white dark:bg-slate-950 p-4 rounded-xl border border-gray-100 dark:border-slate-800">
+            <div className="flex flex-wrap items-center gap-3">
               <ScoreBadge score={job.effective_score} hasOverride={!!job.score_override} size="lg" />
               <DomainTag domain={job.effective_domain} />
               <StatusBadge status={job.status} />
             </div>
-            <div className="flex items-center space-x-4 text-sm text-gray-500 dark:text-slate-400">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4 text-sm text-gray-500 dark:text-slate-400">
               <div className="flex flex-col">
                 <span>Added: {format(new Date(job.added_at), 'MMM d, yyyy')}</span>
                 {job.posted_at && <span>Posted: {format(new Date(job.posted_at), 'MMM d, yyyy')}</span>}
               </div>
-              <button
-                onClick={() => setIsListingModalOpen(true)}
-                className="flex items-center space-x-1 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white font-medium pl-4"
-              >
-                <FileText className="h-4 w-4" />
-                <span>Show Listing</span>
-              </button>
-              <a 
-                href={job.url} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="flex items-center space-x-1 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium border-l border-gray-200 dark:border-slate-700 pl-4"
-              >
-                <span>Open Posting</span>
-                <ExternalLink className="h-4 w-4" />
-              </a>
+              <div className="flex items-center gap-4 pt-3 sm:pt-0 border-t sm:border-t-0 sm:border-l border-gray-200 dark:border-slate-700 sm:pl-4">
+                <button
+                  onClick={() => setIsListingModalOpen(true)}
+                  className="flex items-center space-x-1 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white font-medium"
+                >
+                  <FileText className="h-4 w-4" />
+                  <span>Show Listing</span>
+                </button>
+                <a 
+                  href={job.url} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="flex items-center space-x-1 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium border-l border-gray-200 dark:border-slate-700 pl-4"
+                >
+                  <span>Open Posting</span>
+                  <ExternalLink className="h-4 w-4" />
+                </a>
+              </div>
             </div>
           </div>
 
           {/* LLM Summary */}
           {job.llm_summary && (
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-2">
                 <h4 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">AI Summary</h4>
                 <button
                   onClick={handleReanalyze}
@@ -219,9 +225,9 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({ jobId, onClose }
           </div>
 
           {/* Overrides */}
-          <div className="space-y-4 p-6 bg-white dark:bg-slate-950 rounded-xl border border-gray-200 dark:border-slate-800">
+          <div className="space-y-4 p-4 sm:p-6 bg-white dark:bg-slate-950 rounded-xl border border-gray-200 dark:border-slate-800">
             <h4 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">Manual Overrides</h4>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               <div>
                 <label className="block text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase mb-2">Score Override</label>
                 <input
@@ -280,7 +286,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({ jobId, onClose }
           </div>
 
           {/* Danger Zone */}
-          <div className="pt-6 border-t border-gray-100 dark:border-slate-800 flex items-center justify-between">
+          <div className="pt-6 border-t border-gray-100 dark:border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="text-sm text-gray-500 dark:text-slate-400 italic">
               * Overrides take precedence over AI-generated values.
             </div>

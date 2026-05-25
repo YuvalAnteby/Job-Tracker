@@ -12,7 +12,7 @@ import { useJobs, useUpdateJobStatus, useDeleteJob } from '../hooks/useJobs';
 import { ScoreBadge, DomainTag, StatusBadge } from '../components/shared/Badges';
 import { FilterPanel } from '../components/dashboard/FilterPanel';
 import { JobDetailPanel } from '../components/dashboard/JobDetailPanel';
-import { Eye, CheckCircle, XCircle, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
+import { Eye, CheckCircle, XCircle, Trash2, ChevronDown, ChevronRight, Filter } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '../utils/cn';
 
@@ -23,6 +23,7 @@ export const Dashboard: React.FC = () => {
   const [sorting, setSorting] = useState<SortingState>([{ id: 'created_at', desc: true }]);
   const [rowSelection, setRowSelection] = useState({});
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(() => window.innerWidth >= 1024);
 
   const { data: jobs = [], isLoading } = useJobs(filters);
   const updateStatus = useUpdateJobStatus();
@@ -138,13 +139,38 @@ export const Dashboard: React.FC = () => {
   });
 
   return (
-    <div className="flex flex-col lg:flex-row gap-8">
-      <aside className="lg:w-1/4">
-        <FilterPanel filters={filters} setFilters={setFilters} />
-      </aside>
+    <div className="flex flex-col space-y-4">
+      {/* Filters Toggle Button */}
+      <div className="flex justify-start">
+        <button 
+          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+          className="flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white dark:bg-slate-800 dark:text-slate-200 border border-gray-300 dark:border-slate-700 rounded-lg shadow-sm hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
+        >
+          <Filter className="h-4 w-4 mr-2" />
+          {isSidebarOpen ? 'Hide Filters' : 'Show Filters'}
+        </button>
+      </div>
 
-      <div className="lg:w-3/4 flex flex-col space-y-4">
-        {/* Bulk Actions Bar */}
+      <div className={cn("flex flex-col lg:flex-row items-start transition-all duration-300", isSidebarOpen ? "gap-8" : "gap-0")}>
+        <aside 
+          className={cn(
+            "transition-all duration-300 ease-in-out overflow-hidden origin-top lg:origin-left shrink-0",
+            isSidebarOpen 
+              ? "max-h-[2000px] lg:max-w-xs lg:w-1/4 opacity-100 scale-100" 
+              : "max-h-0 lg:max-h-[2000px] lg:max-w-0 lg:w-0 opacity-0 scale-95 lg:scale-100 !p-0 !m-0"
+          )}
+        >
+          <div className="w-full lg:w-[320px] pb-4 lg:pb-0">
+            <FilterPanel filters={filters} setFilters={setFilters} />
+          </div>
+        </aside>
+
+        {/* Main Content Area */}
+        <div className={cn(
+          "flex flex-col space-y-4 transition-all duration-300 ease-in-out w-full",
+          isSidebarOpen ? "lg:w-3/4 flex-1" : "flex-1"
+        )}>
+          {/* Bulk Actions Bar */}
         {Object.keys(rowSelection).length > 0 && (
           <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-900/30 px-4 py-3 rounded-lg flex items-center justify-between animate-in fade-in slide-in-from-top-2">
             <span className="text-blue-700 dark:text-blue-300 text-sm font-medium">
@@ -173,8 +199,8 @@ export const Dashboard: React.FC = () => {
                         <div className="flex items-center space-x-1">
                           {flexRender(header.column.columnDef.header, header.getContext())}
                           {{
-                            asc: ' ðŸ”¼',
-                            desc: ' ðŸ”½',
+                            asc: ' 🡅',
+                            desc: ' 🡇',
                           }[header.column.getIsSorted() as string] ?? null}
                         </div>
                       </th>
@@ -226,6 +252,7 @@ export const Dashboard: React.FC = () => {
           </div>
         </div>
       </div>
+    </div>
     </div>
   );
 };
