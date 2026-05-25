@@ -9,6 +9,7 @@ import {
 import { Domain } from '../enums/domain.enum';
 import { JobStatus } from '../enums/job-status.enum';
 import { JobRequirement } from './job-requirement.entity';
+import { Expose } from 'class-transformer';
 
 @Entity('jobs')
 export class Job {
@@ -95,14 +96,17 @@ export class Job {
   requirements: JobRequirement[];
 
   // Computed columns (virtual getters)
+  @Expose()
   get effective_score(): number | null {
     return this.score_override ?? this.llm_score;
   }
 
+  @Expose()
   get effective_is_applicable(): boolean {
     return this.is_applicable_override ?? this.llm_is_applicable;
   }
 
+  @Expose()
   get effective_domain(): Domain {
     return this.domain_override ?? this.llm_domain;
   }
