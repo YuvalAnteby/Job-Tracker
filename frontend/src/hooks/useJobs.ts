@@ -62,6 +62,22 @@ export const useUpdateJob = () => {
   });
 };
 
+// Re-analyze job listing handler
+export const useReanalyzeJob = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { data } = await apiClient.post(`/jobs/${id}/analyze`);
+      return data;
+    },
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: ['jobs'] });
+      queryClient.invalidateQueries({ queryKey: ['jobs', id] });
+    },
+  });
+};
+
 export const useUpdateJobStatus = () => {
   const queryClient = useQueryClient();
 

@@ -43,6 +43,14 @@ export class JobsController {
     return this.jobsService.findOne(id);
   }
 
+  @Post(':id/analyze')
+  @ApiOperation({ summary: 'Re-analyze an existing job description' })
+  @ApiResponse({ status: 200, description: 'Job successfully re-analyzed.' })
+  @ApiResponse({ status: 404, description: 'Job not found.' })
+  reanalyze(@Param('id') id: string) {
+    return this.jobsService.reanalyze(id);
+  }
+
   @Patch(':id')
   @ApiOperation({ summary: 'Update job details or apply overrides' })
   @ApiResponse({ status: 200, description: 'Job successfully updated.' })

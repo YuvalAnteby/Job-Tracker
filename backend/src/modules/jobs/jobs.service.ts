@@ -39,11 +39,39 @@ export class JobsService {
       );
     }
 
-    // 2. LLM Analysis
-    this.logger.log(`Analyzing job from URL: ${createJobDto.url}`);
-    const analysis = await this.llmService.analyzeJob(createJobDto.description);
+    const job = this.jobRepository.create({
+      ...createJobDto,
+      posted_at: createJobDto.posted_at
+        ? new Date(createJobDto.posted_at)
+        : null,
+    });
 
-    // 3. Application logic
+    return this.processJobAnalysis(job, createJobDto.description, createJobDto.company_name, createJobDto.title);
+  }
+
+  async reanalyze(id: string): Promise<Job> {
+    const job = await this.findOne(id);
+    this.logger.log(`Re-analyzing job from ID: ${id}`);
+    
+    // Remove old requirements
+    if (job.requirements && job.requirements.length > 0) {
+      await this.requirementRepository.remove(job.requirements);
+      job.requirements = [];
+    }
+    
+    return this.processJobAnalysis(job, job.description, job.company_name, job.title);
+  }
+
+  private async processJobAnalysis(
+    job: Job,
+    description: string,
+    providedCompany: string,
+    providedTitle: string,
+  ): Promise<Job> {
+    // 1. LLM Analysis
+    const analysis = await this.llmService.analyzeJob(description);
+
+    // 2. Application logic
     const scoreThreshold = await this.settingsService.get<number>(
       'score_threshold',
       70,
@@ -53,21 +81,23 @@ export class JobsService {
       ['BACKEND', 'FULLSTACK'],
     );
 
+    // Determine applicability based on score and domain
     const isApplicableByScore = analysis.score >= scoreThreshold;
     const isApplicableByDomain = applicableDomains.includes(analysis.domain);
 
+    // Use provided company/title if given, otherwise fall back to LLM results or defaults
     const company_name =
-      createJobDto.company_name === 'skip'
+      providedCompany === 'skip'
         ? analysis.company_name || 'Unknown Company'
-        : createJobDto.company_name;
+        : providedCompany;
 
     const title =
-      createJobDto.title === 'skip'
+      providedTitle === 'skip'
         ? analysis.title || 'Unknown Title'
-        : createJobDto.title;
+        : providedTitle;
 
-    const job = this.jobRepository.create({
-      ...createJobDto,
+    // Save job and requirements to DB
+    Object.assign(job, {
       company_name,
       title,
       llm_score: analysis.score,
@@ -75,9 +105,6 @@ export class JobsService {
       domain: analysis.domain, // Default domain is LLM domain
       llm_summary: analysis.summary,
       llm_is_applicable: isApplicableByScore && isApplicableByDomain,
-      posted_at: createJobDto.posted_at
-        ? new Date(createJobDto.posted_at)
-        : null,
       requirements: analysis.requirements.map((req, index) =>
         this.requirementRepository.create({
           name: req.name,

@@ -1,7 +1,8 @@
 ﻿import React, { useState } from 'react';
 import { Job, JobStatus, Domain, MetStatus } from '../../types';
-import { useJob, useUpdateJob, useDeleteJob } from '../../hooks/useJobs';
+import { useJob, useUpdateJob, useDeleteJob, useReanalyzeJob } from '../../hooks/useJobs';
 import { ScoreBadge, DomainTag, StatusBadge } from '../shared/Badges';
+import { Modal } from '../shared/Modal';
 import { 
   CheckCircle, 
   XCircle, 
@@ -12,6 +13,8 @@ import {
   Trash2,
   Loader2,
   Save,
+  RefreshCw,
+  FileText,
   X
 } from 'lucide-react';
 import { format } from 'date-fns';
@@ -62,6 +65,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({ jobId, onClose }
   const { data: job, isLoading } = useJob(jobId || '');
   const updateJob = useUpdateJob();
   const deleteJob = useDeleteJob();
+  const reanalyzeJob = useReanalyzeJob();
 
   const [notes, setNotes] = useState(job?.notes || '');
   const [scoreOverride, setScoreOverride] = useState<number | string>(job?.score_override || '');
@@ -69,6 +73,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({ jobId, onClose }
   const [isApplicableOverride, setIsApplicableOverride] = useState<'auto' | 'yes' | 'no'>(
     job?.is_applicable_override === true ? 'yes' : job?.is_applicable_override === false ? 'no' : 'auto'
   );
+  const [isListingModalOpen, setIsListingModalOpen] = useState(false);
 
   // Sync state when job loads
   React.useEffect(() => {
@@ -108,6 +113,16 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({ jobId, onClose }
     }
   };
 
+  // Re-analyze job listing handler
+  const handleReanalyze = () => {
+    if (jobId) {
+      reanalyzeJob.mutate(jobId, {
+        onSuccess: () => toast.success('Job re-analyzed successfully'),
+        onError: () => toast.error('Failed to re-analyze job'),
+      });
+    }
+  };
+
   return (
     <div className="bg-gray-50/50 dark:bg-slate-900/50 p-6 animate-in slide-in-from-top-2 duration-200">
       <div className="flex justify-between items-center mb-6">
@@ -140,6 +155,13 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({ jobId, onClose }
                 <span>Added: {format(new Date(job.added_at), 'MMM d, yyyy')}</span>
                 {job.posted_at && <span>Posted: {format(new Date(job.posted_at), 'MMM d, yyyy')}</span>}
               </div>
+              <button
+                onClick={() => setIsListingModalOpen(true)}
+                className="flex items-center space-x-1 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white font-medium pl-4"
+              >
+                <FileText className="h-4 w-4" />
+                <span>Show Listing</span>
+              </button>
               <a 
                 href={job.url} 
                 target="_blank" 
@@ -155,7 +177,17 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({ jobId, onClose }
           {/* LLM Summary */}
           {job.llm_summary && (
             <div className="space-y-2">
-              <h4 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">AI Summary</h4>
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">AI Summary</h4>
+                <button
+                  onClick={handleReanalyze}
+                  disabled={reanalyzeJob.isPending}
+                  className="flex items-center space-x-1 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium disabled:opacity-50"
+                >
+                  <RefreshCw className={cn("h-3 w-3", reanalyzeJob.isPending && "animate-spin")} />
+                  <span>{reanalyzeJob.isPending ? 'Regenerating...' : 'Regenerate'}</span>
+                </button>
+              </div>
               <p className="text-blue-900 dark:text-blue-100 leading-relaxed italic bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-100 dark:border-blue-900/30">
                 "{job.llm_summary}"
               </p>
@@ -263,6 +295,17 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({ jobId, onClose }
           </div>
         </div>
       )}
+
+      {/* Raw Listing Modal */}
+      <Modal
+        isOpen={isListingModalOpen}
+        onClose={() => setIsListingModalOpen(false)}
+        title="Job Listing"
+      >
+        <div className="p-6 overflow-y-auto max-h-[70vh] bg-gray-50 dark:bg-slate-900 whitespace-pre-wrap text-sm text-gray-800 dark:text-slate-300 font-mono border-t border-gray-200 dark:border-slate-800">
+          {job?.description || 'No description available.'}
+        </div>
+      </Modal>
     </div>
   );
 };
