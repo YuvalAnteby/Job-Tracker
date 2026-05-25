@@ -14,13 +14,13 @@ services:
     networks:
       - jobtracker-net
 
-  redis:
-    image: redis:7-alpine
-    container_name: jobtracker-redis
-    ports:
-      - "6379:6379"
-    networks:
-      - jobtracker-net
+  #redis:
+  #  image: redis:7-alpine
+  #  container_name: jobtracker-redis
+  #  ports:
+  #    - "6379:6379"
+  #  networks:
+  #    - jobtracker-net
 
   backend:
     build:
