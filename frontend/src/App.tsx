@@ -1,5 +1,4 @@
-import React from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { Outlet, RouterProvider, createBrowserRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { Toaster } from 'react-hot-toast';
@@ -13,6 +12,19 @@ import Settings from './pages/Settings/Settings';
 const JobDetail = () => <div className="text-2xl font-bold">Job Detail</div>;
 const NotFound = () => <div className="text-2xl font-bold">404 - Not Found</div>;
 
+const router = createBrowserRouter([
+  {
+    element: <MainLayout><Outlet /></MainLayout>,
+    children: [
+      { path: '/', element: <Dashboard /> },
+      { path: '/jobs/:id', element: <JobDetail /> },
+      { path: '/gap', element: <GapSummary /> },
+      { path: '/settings', element: <Settings /> },
+      { path: '*', element: <NotFound /> },
+    ],
+  },
+]);
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -25,18 +37,8 @@ const queryClient = new QueryClient({
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <MainLayout>
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/jobs/:id" element={<JobDetail />} />
-            <Route path="/gap" element={<GapSummary />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </MainLayout>
-        <Toaster position="bottom-right" />
-      </BrowserRouter>
+      <RouterProvider router={router} />
+      <Toaster position="bottom-right" />
       <ReactQueryDevtools initialIsOpen={false} />
     </QueryClientProvider>
   );

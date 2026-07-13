@@ -141,10 +141,10 @@ export const Dashboard: React.FC = () => {
   return (
     <div className="flex flex-col space-y-4">
       {/* Filters Toggle Button */}
-      <div className="flex justify-start">
+      <div className="flex justify-start px-2">
         <button 
           onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-          className="flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white dark:bg-slate-800 dark:text-slate-200 border border-gray-300 dark:border-slate-700 rounded-lg shadow-sm hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
+          className="flex items-center py-2 text-sm font-semibold tracking-wide text-gray-500 hover:text-gray-900 dark:text-slate-400 dark:hover:text-white transition-colors"
         >
           <Filter className="h-4 w-4 mr-2" />
           {isSidebarOpen ? 'Hide Filters' : 'Show Filters'}
@@ -184,16 +184,16 @@ export const Dashboard: React.FC = () => {
           </div>
         )}
 
-        <div className="bg-white dark:bg-slate-900 shadow-[0_1px_3px_rgba(0,0,0,0.1)] rounded-xl overflow-hidden">
+        <div className="w-full">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
-              <thead className="bg-gray-50/80 dark:bg-slate-800/80 border-b border-gray-100 dark:border-slate-800">
+              <thead>
                 {table.getHeaderGroups().map(headerGroup => (
                   <tr key={headerGroup.id}>
                     {headerGroup.headers.map(header => (
                       <th
                         key={header.id}
-                        className="px-6 py-3 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-slate-200 transition-colors"
+                        className="px-8 py-4 text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-widest cursor-pointer hover:text-gray-700 dark:hover:text-slate-300 transition-colors"
                         onClick={header.column.getToggleSortingHandler()}
                       >
                         <div className="flex items-center space-x-1">
@@ -208,10 +208,10 @@ export const Dashboard: React.FC = () => {
                   </tr>
                 ))}
               </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-slate-800">
+              <tbody>
                 {isLoading ? (
                   <tr>
-                    <td colSpan={columns.length} className="px-6 py-12 text-center text-gray-500 dark:text-slate-400">
+                    <td colSpan={columns.length} className="px-8 py-12 text-center text-gray-500 dark:text-slate-400">
                       <div className="flex flex-col items-center space-y-2">
                         <div className="animate-spin rounded-full h-8 w-8 border-2 border-r-blue-600 border-indigo-200"></div>
                         <span>Loading jobs...</span>
@@ -220,7 +220,7 @@ export const Dashboard: React.FC = () => {
                   </tr>
                 ) : jobs.length === 0 ? (
                   <tr>
-                    <td colSpan={columns.length} className="px-6 py-12 text-center text-gray-500 dark:text-slate-400">
+                    <td colSpan={columns.length} className="px-8 py-12 text-center text-gray-500 dark:text-slate-400">
                       No jobs found matching your criteria.
                     </td>
                   </tr>
@@ -229,17 +229,17 @@ export const Dashboard: React.FC = () => {
                     <React.Fragment key={row.id}>
                       <tr 
                         onClick={() => setSelectedJobId(selectedJobId === row.original.id ? null : row.original.id)}
-                        className={`hover:bg-gray-50/80 dark:hover:bg-slate-800/80 transition-colors cursor-pointer ${selectedJobId === row.original.id ? 'bg-blue-50/30 dark:bg-blue-900/10' : ''}`}
+                        className={`hover:bg-gray-100/50 dark:hover:bg-slate-900/40 transition-colors cursor-pointer ${selectedJobId === row.original.id ? 'bg-gray-100/30 dark:bg-slate-900/60' : ''}`}
                       >
                         {row.getVisibleCells().map(cell => (
-                          <td key={cell.id} className="px-6 py-4 text-sm text-gray-600 dark:text-slate-300 whitespace-nowrap">
+                          <td key={cell.id} className="px-8 py-5 text-sm text-gray-600 dark:text-slate-300 whitespace-nowrap">
                             {flexRender(cell.column.columnDef.cell, cell.getContext())}
                           </td>
                         ))}
                       </tr>
                       {selectedJobId === row.original.id && (
                         <tr>
-                          <td colSpan={columns.length} className="px-0 py-0 border-t border-gray-100 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-900/50">
+                          <td colSpan={columns.length} className="px-0 py-0 border-t border-gray-100 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-900/10">
                              <JobDetailPanel jobId={row.original.id} onClose={() => setSelectedJobId(null)} />
                           </td>
                         </tr>
