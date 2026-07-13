@@ -56,7 +56,7 @@ export class GeminiProvider extends LlmProvider {
     const prompt = `
       CV Content:
       ${cvText}
-      
+
       Job Description:
       ${jobDescription}
     `;

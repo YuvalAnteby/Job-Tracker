@@ -3,6 +3,7 @@ services:
   postgres:
     image: postgres:16
     container_name: jobtracker-db
+    restart: unless-stopped
     volumes:
       - pgdata:/var/lib/postgresql/data
     environment:
@@ -27,6 +28,7 @@ services:
       context: ../backend
       dockerfile: ../infra/Dockerfile.backend
     container_name: jobtracker-backend
+    restart: unless-stopped
     volumes:
       - ../backend/src:/app/src
     environment:
@@ -47,6 +49,7 @@ services:
       context: ../frontend
       dockerfile: ../infra/Dockerfile.frontend
     container_name: jobtracker-frontend
+    restart: unless-stopped
     volumes:
       - ../frontend/src:/app/src
     environment:
