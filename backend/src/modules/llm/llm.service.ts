@@ -25,10 +25,7 @@ export class LlmService {
       'llm_model',
       'gemini-2.5-flash',
     );
-    const cvText = await this.settingsService.get<string>(
-      'master_cv_cached_text',
-      '',
-    );
+    const cvText = await this.settingsService.getMasterCvText();
 
     if (!cvText) {
       this.logger.warn(
@@ -54,10 +51,7 @@ export class LlmService {
       'llm_model',
       'gemini-2.5-flash',
     );
-    const cvText = await this.settingsService.get<string>(
-      'master_cv_cached_text',
-      '',
-    );
+    const cvText = await this.settingsService.getMasterCvText();
 
     if (!cvText) {
       throw new Error('Master CV text is empty. Cannot generate gap summary.');

@@ -35,24 +35,30 @@ export class GeminiProvider extends LlmProvider {
     if (!this.ai) {
       throw new Error('Gemini AI not initialized (missing API key)');
     }
+    const systemInstruction = `
+      You are a senior technical hiring manager and an ATS keyword matching expert.
+      Analyze the provided job description against the candidate's CV.
+
+      Tasks:
+        1. Extract the company name and job title from the description. (If company name cannot be determined, return 'Unknown')
+        2. Assign a fit score (0-100).
+          - 0-49: Major qualification gaps
+          - 50-69: Missing multiple core requirements
+          - 70-89: Meets most requirements, missing nice-to-haves
+          - 90-100: Strong match on all hard requirements
+        3. Classify the job into one of these domains: ${Object.values(Domain).join(', ')}.
+        4. Provide a concise 2-3 sentence summary of the job and why it's a good/bad fit.
+        5. List the key requirements of the job and whether they are met by the candidate, with brief reasoning.
+
+      Respond only with a valid JSON object matching the requested schema.
+    `;
 
     const prompt = `
-      You are an expert technical recruiter. Analyze the following job description against the provided CV.
-      
       CV Content:
       ${cvText}
       
       Job Description:
       ${jobDescription}
-      
-      Tasks:
-      1. Extract the company name and job title from the description.
-      2. Assign a fit score (0-100) based on how well the candidate's experience matches the job requirements.
-      3. Classify the job into one of these domains: ${Object.values(Domain).join(', ')}.
-      4. Provide a concise 2-3 sentence summary of the job and why it's a good/bad fit.
-      5. List the key requirements of the job and whether they are met by the candidate, with brief reasoning.
-      
-      Respond only with a valid JSON object matching the requested schema.
     `;
 
     try {
@@ -60,6 +66,7 @@ export class GeminiProvider extends LlmProvider {
         model,
         contents: prompt,
         config: {
+          systemInstruction: systemInstruction,
           responseMimeType: 'application/json',
           responseSchema: {
             type: Type.OBJECT,
@@ -92,8 +99,9 @@ export class GeminiProvider extends LlmProvider {
           },
         },
       });
-
-      return JSON.parse(response.text || '{}') as JobAnalysis;
+      const raw = response.text;
+      if (!raw) throw new Error('Empty response from Gemini');
+      return JSON.parse(raw) as JobAnalysis;
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
       this.logger.error(`Error generating content with Gemini: ${message}`);
@@ -112,16 +120,10 @@ export class GeminiProvider extends LlmProvider {
     
     this.logger.debug(`CV length: ${cvText.length} characters`);
     const jobsJson = JSON.stringify(jobs, null, 2);
-
-    const prompt = `
-      You are a career coach and technical expert. You will receive a list of jobs the candidate is interested in and the candidate's CV.
+    const systemInstruction = `
+      You are an expert technical career coach and an ATS keyword matching expert.
+      Analyze the candidate's CV against the provided array of job requirements.
       Your task is to identify skill gaps and provide a structured summary to help the candidate improve their fit for these roles.
-      
-      CV Content:
-      ${cvText}
-      
-      Jobs and Requirements:
-      ${jobsJson}
       
       Tasks:
       1. Group the analysis by domain (e.g., BACKEND, ML, DEVOPS).
@@ -132,6 +134,14 @@ export class GeminiProvider extends LlmProvider {
       3. Identify "overall_top_gaps": the top 3-5 most critical skills/technologies the candidate should learn next, across all domains.
       
       Respond only with a valid JSON object matching the requested schema.
+      `;
+
+    const prompt = `
+      CV Content:
+      ${cvText}
+      
+      Jobs and Requirements:
+      ${jobsJson}
     `;
 
     try {
@@ -139,6 +149,7 @@ export class GeminiProvider extends LlmProvider {
         model,
         contents: prompt,
         config: {
+          systemInstruction: systemInstruction,
           responseMimeType: 'application/json',
           responseSchema: {
             type: Type.OBJECT,
@@ -174,8 +185,9 @@ export class GeminiProvider extends LlmProvider {
           },
         },
       });
-
-      return JSON.parse(response.text || '{}') as GapSummaryResult;
+      const raw = response.text;
+      if (!raw) throw new Error('Empty response from Gemini');
+      return JSON.parse(raw) as GapSummaryResult;
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
       this.logger.error(`Error generating gap summary with Gemini: ${message}`);
@@ -183,14 +195,14 @@ export class GeminiProvider extends LlmProvider {
     }
   }
 
-  async extractTextFromImage(base64Image: string): Promise<string> {
+  async extractTextFromImage(base64Image: string, model: string = 'gemini-2.5-flash'): Promise<string> {
     if (!this.ai) {
       throw new Error('Gemini AI not initialized (missing API key)');
     }
 
     try {
       const response = await this.ai.models.generateContent({
-        model: 'gemini-1.5-flash', // Vision works well with flash
+        model,
         contents: [
           {
             role: 'user',
