@@ -3,6 +3,9 @@ import { TelegramService } from './telegram.service';
 import { SettingsService } from '../settings/settings.service';
 import { TelegramAuthGuard } from './telegram-auth.guard';
 import { Context } from 'telegraf';
+import { getBotToken } from 'nestjs-telegraf';
+import { JobsService } from '../jobs/jobs.service';
+import { GapService } from '../gap/gap.service';
 
 describe('TelegramService', () => {
   let service: TelegramService;
@@ -19,6 +22,9 @@ describe('TelegramService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         TelegramService,
+        { provide: getBotToken(), useValue: {} },
+        { provide: JobsService, useValue: { findAll: jest.fn() } },
+        { provide: GapService, useValue: {} },
         {
           provide: SettingsService,
           useValue: mockSettingsService,

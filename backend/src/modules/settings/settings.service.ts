@@ -1,7 +1,50 @@
-import { Injectable, OnModuleInit, Logger, BadRequestException, InternalServerErrorException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+  OnModuleInit,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { Domain } from '../jobs/enums/domain.enum';
+import {
+  CvSource,
+  MASTER_CV_MAX_BYTES,
+  UpdateMasterCvDto,
+} from './dto/master-cv.dto';
+import { UpdateSettingsDto } from './dto/update-settings.dto';
 import { Setting } from './entities/setting.entity';
+
+export interface MasterCvSnapshot {
+  content: string;
+  updated_at: string;
+  source: CvSource;
+  filename?: string;
+}
+
+export interface MasterCvState {
+  current: MasterCvSnapshot | null;
+  previous: MasterCvSnapshot | null;
+  revision: number;
+}
+
+const PUBLIC_SETTING_KEYS = [
+  'score_threshold',
+  'applicable_domains',
+  'domain_keywords',
+  'llm_provider',
+  'llm_model',
+  'telegram_allowed_chat_ids',
+] as const;
+const UPDATABLE_SETTING_KEYS = [
+  'score_threshold',
+  'applicable_domains',
+  'domain_keywords',
+  'llm_model',
+  'telegram_allowed_chat_ids',
+] as const;
 
 @Injectable()
 export class SettingsService implements OnModuleInit {
@@ -14,87 +57,247 @@ export class SettingsService implements OnModuleInit {
 
   async onModuleInit() {
     await this.ensureDefaultSettings();
+    await this.set('llm_provider', 'gemini');
+    await this.migrateLegacyMasterCv();
   }
 
   async get<T = unknown>(key: string, defaultValue?: T): Promise<T> {
     const setting = await this.settingRepository.findOne({ where: { key } });
-    if (!setting) {
-      return defaultValue as T;
-    }
-    return setting.value as T;
+    return setting ? (setting.value as T) : (defaultValue as T);
   }
 
   async set(key: string, value: unknown): Promise<void> {
     let setting = await this.settingRepository.findOne({ where: { key } });
-    if (!setting) {
-      setting = this.settingRepository.create({ key, value });
-    } else {
-      setting.value = value;
-    }
+    if (!setting) setting = this.settingRepository.create({ key, value });
+    else setting.value = value;
     await this.settingRepository.save(setting);
   }
 
   async getAll(): Promise<Record<string, unknown>> {
     const settings = await this.settingRepository.find();
-    return settings.reduce(
-      (acc, curr) => {
-        acc[curr.key] = curr.value;
-        return acc;
-      },
-      {} as Record<string, unknown>,
+    const allowed = new Set<string>(PUBLIC_SETTING_KEYS);
+    return settings.reduce<Record<string, unknown>>((result, setting) => {
+      if (allowed.has(setting.key)) result[setting.key] = setting.value;
+      return result;
+    }, {});
+  }
+
+  async updateSettings(update: UpdateSettingsDto) {
+    this.validateGeneralSettings(update);
+    const allowed = new Set<string>(UPDATABLE_SETTING_KEYS);
+    const entries = Object.entries(update).filter(([key, value]) => allowed.has(key) && value !== undefined);
+
+    await this.settingRepository.manager.transaction(async (manager) => {
+      const repository = manager.getRepository(Setting);
+      for (const [key, value] of entries) {
+        let setting = await repository.findOne({ where: { key } });
+        if (!setting) setting = repository.create({ key, value });
+        else setting.value = value;
+        await repository.save(setting);
+      }
+    });
+
+    return this.getAll();
+  }
+
+  async getMasterCv() {
+    const state = await this.loadMasterCvState();
+    return this.toMasterCvResponse(state);
+  }
+
+  async getMasterCvText(): Promise<string> {
+    const state = await this.get<MasterCvState | null>('master_cv_state', null);
+    if (state?.current?.content) return state.current.content;
+    return this.get<string>('master_cv_cached_text', '');
+  }
+
+  async saveMasterCv(input: UpdateMasterCvDto) {
+    this.validateSnapshotInput(input);
+    return this.mutateMasterCv(input.expected_revision, (state) => {
+      if (state.current?.content === input.content) return state;
+      const snapshot: MasterCvSnapshot = {
+        content: input.content,
+        updated_at: new Date().toISOString(),
+        source: input.source,
+        ...(input.filename ? { filename: input.filename } : {}),
+      };
+      return { current: snapshot, previous: state.current, revision: state.revision + 1 };
+    });
+  }
+
+  async clearMasterCv(expectedRevision: number) {
+    return this.mutateMasterCv(expectedRevision, (state) =>
+      state.current
+        ? { current: null, previous: state.current, revision: state.revision + 1 }
+        : state,
     );
   }
 
-  async refreshCv(): Promise<{ message: string; cached_at: string }> {
-    const cvUrl = await this.get<string>('master_cv_url', '');
+  async restoreMasterCv(expectedRevision: number) {
+    return this.mutateMasterCv(expectedRevision, (state) => {
+      if (!state.previous) throw new BadRequestException('No previous CV version is available.');
+      return { current: state.previous, previous: state.current, revision: state.revision + 1 };
+    });
+  }
 
-    if (!cvUrl) {
-      throw new BadRequestException('Master CV URL is not configured in settings.');
-    }
+  /** @deprecated Use PUT /settings/master-cv. */
+  async refreshCv(): Promise<{ message: string; cached_at: string; revision: number }> {
+    const cvUrl = await this.get<string>('master_cv_url', '');
+    if (!cvUrl) throw new BadRequestException('Master CV URL is not configured in settings.');
 
     try {
-      let fetchUrl = cvUrl;
-
-      // Auto-convert Google Docs edit URLs to direct text export URLs
-      if (cvUrl.includes('docs.google.com/document/d/')) {
-        const match = cvUrl.match(/\/d\/([a-zA-Z0-9-_]+)/);
-        if (match && match[1]) {
-          const docId = match[1];
-          fetchUrl = `https://docs.google.com/document/export?format=txt&id=${docId}`;
-        }
-      } 
-      // Auto-convert Google Drive file view URLs to direct download URLs
-      else if (cvUrl.includes('drive.google.com/file/d/')) {
-        const match = cvUrl.match(/\/d\/([a-zA-Z0-9-_]+)/);
-        if (match && match[1]) {
-          const fileId = match[1];
-          fetchUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
-        }
-      }
-
-      this.logger.log(`Fetching CV from: ${fetchUrl}`);
+      const fetchUrl = this.toLegacyDownloadUrl(cvUrl);
       const response = await fetch(fetchUrl);
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const text = await response.text();
-
-      if (!text || text.trim().length === 0) {
-        throw new Error('Fetched CV document is empty.');
-      }
-
-      const cachedAt = new Date().toISOString();
-      await this.set('master_cv_cached_text', text.trim());
-      await this.set('master_cv_cached_at', cachedAt);
-
-      this.logger.log('CV refreshed successfully');
-      return { message: 'CV refreshed successfully', cached_at: cachedAt };
-    } catch (error: any) {
-      this.logger.error(`CV refresh failed: ${error.message}`);
-      throw new InternalServerErrorException(`CV refresh failed: ${error.message}`);
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      const content = await response.text();
+      const state = await this.loadMasterCvState();
+      const saved = await this.saveMasterCv({
+        content,
+        source: 'legacy_url',
+        expected_revision: state.revision,
+      });
+      return {
+        message: 'CV refreshed successfully',
+        cached_at: saved.updated_at!,
+        revision: saved.revision,
+      };
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(`CV refresh failed: ${message}`);
+      throw new InternalServerErrorException(`CV refresh failed: ${message}`);
     }
+  }
+
+  private async loadMasterCvState(): Promise<MasterCvState> {
+    const state = await this.get<MasterCvState | null>('master_cv_state', null);
+    if (state) return state;
+    await this.migrateLegacyMasterCv();
+    return this.get<MasterCvState>('master_cv_state', { current: null, previous: null, revision: 0 });
+  }
+
+  private async mutateMasterCv(
+    expectedRevision: number,
+    mutate: (state: MasterCvState) => MasterCvState,
+  ) {
+    // Ensure the singleton row exists before acquiring a row-level lock.
+    await this.loadMasterCvState();
+    return this.settingRepository.manager.transaction(async (manager) => {
+      const repository = manager.getRepository(Setting);
+      const setting = await repository.findOne({
+        where: { key: 'master_cv_state' },
+        lock: { mode: 'pessimistic_write' },
+      });
+      const state = setting?.value as MasterCvState;
+      this.assertRevision(state, expectedRevision);
+      const next = mutate(state);
+      if (next !== state) {
+        setting!.value = next;
+        await repository.save(setting!);
+      }
+      return this.toMasterCvResponse(next);
+    });
+  }
+
+  private async migrateLegacyMasterCv() {
+    const existing = await this.get<MasterCvState | null>('master_cv_state', null);
+    if (existing) return;
+
+    const content = await this.get<string>('master_cv_cached_text', '');
+    const cachedAt = await this.get<string>('master_cv_cached_at', '');
+    const current = content.trim()
+      ? {
+          content,
+          updated_at: this.validDateOrNow(cachedAt),
+          source: 'legacy_url' as const,
+        }
+      : null;
+    await this.set('master_cv_state', {
+      current,
+      previous: null,
+      revision: current ? 1 : 0,
+    } satisfies MasterCvState);
+  }
+
+  private toMasterCvResponse(state: MasterCvState) {
+    const current = state.current;
+    return {
+      content: current?.content ?? '',
+      updated_at: current?.updated_at ?? null,
+      source: current?.source ?? null,
+      filename: current?.filename ?? null,
+      word_count: this.countWords(current?.content ?? ''),
+      character_count: current?.content.length ?? 0,
+      previous: state.previous
+        ? {
+            updated_at: state.previous.updated_at,
+            source: state.previous.source,
+            filename: state.previous.filename ?? null,
+            word_count: this.countWords(state.previous.content),
+            character_count: state.previous.content.length,
+          }
+        : null,
+      revision: state.revision,
+    };
+  }
+
+  private validateSnapshotInput(input: UpdateMasterCvDto) {
+    if (!input.content.trim()) throw new BadRequestException('CV content cannot be empty.');
+    if (Buffer.byteLength(input.content, 'utf8') > MASTER_CV_MAX_BYTES) {
+      throw new BadRequestException('CV content exceeds the 1 MiB limit.');
+    }
+    if (input.source === 'file') {
+      if (!input.filename || !/\.(md|txt)$/i.test(input.filename)) {
+        throw new BadRequestException('File-sourced CVs require a .md or .txt filename.');
+      }
+    } else if (input.filename) {
+      throw new BadRequestException('A filename is only valid when the source is file.');
+    }
+  }
+
+  private validateGeneralSettings(update: UpdateSettingsDto) {
+    if (update.score_threshold !== undefined && (!Number.isInteger(update.score_threshold) || update.score_threshold < 0 || update.score_threshold > 100)) {
+      throw new BadRequestException('Score threshold must be an integer from 0 to 100.');
+    }
+    if (update.applicable_domains && update.applicable_domains.some((domain) => !Object.values(Domain).includes(domain))) {
+      throw new BadRequestException('Applicable domains contain an invalid value.');
+    }
+    if (update.llm_model !== undefined && (!/^gemini-[a-zA-Z0-9._-]+$/.test(update.llm_model) || update.llm_model.length > 100)) {
+      throw new BadRequestException('Gemini model must be a valid Gemini model name.');
+    }
+    if (update.telegram_allowed_chat_ids?.some((id) => !Number.isSafeInteger(id))) {
+      throw new BadRequestException('Telegram chat IDs must be safe integers.');
+    }
+    if (update.domain_keywords) {
+      for (const [domain, keywords] of Object.entries(update.domain_keywords)) {
+        if (!Object.values(Domain).includes(domain as Domain) || !Array.isArray(keywords) || keywords.some((keyword) => typeof keyword !== 'string' || !keyword.trim() || keyword.length > 100)) {
+          throw new BadRequestException('Domain keywords must be non-empty strings mapped to valid domains.');
+        }
+      }
+    }
+  }
+
+  private assertRevision(state: MasterCvState, expectedRevision: number) {
+    if (state.revision !== expectedRevision) {
+      throw new ConflictException({
+        message: 'The master CV changed since it was loaded.',
+        current_revision: state.revision,
+      });
+    }
+  }
+
+  private countWords(content: string) {
+    return content.trim() ? content.trim().split(/\s+/u).length : 0;
+  }
+
+  private validDateOrNow(value: string) {
+    return value && !Number.isNaN(Date.parse(value)) ? new Date(value).toISOString() : new Date().toISOString();
+  }
+
+  private toLegacyDownloadUrl(cvUrl: string) {
+    const docsId = cvUrl.match(/docs\.google\.com\/document\/d\/([a-zA-Z0-9-_]+)/)?.[1];
+    if (docsId) return `https://docs.google.com/document/export?format=txt&id=${docsId}`;
+    const driveId = cvUrl.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9-_]+)/)?.[1];
+    return driveId ? `https://drive.google.com/uc?export=download&id=${driveId}` : cvUrl;
   }
 
   private async ensureDefaultSettings() {
@@ -102,41 +305,20 @@ export class SettingsService implements OnModuleInit {
       score_threshold: 70,
       applicable_domains: ['BACKEND', 'FULLSTACK'],
       domain_keywords: {
-        ML: [
-          'machine learning',
-          'deep learning',
-          'llm',
-          'nlp',
-          'pytorch',
-          'tensorflow',
-          'mlops',
-        ],
-        DEVOPS: [
-          'kubernetes',
-          'terraform',
-          'ci/cd',
-          'devops',
-          'sre',
-          'infrastructure',
-          'helm',
-        ],
+        ML: ['machine learning', 'deep learning', 'llm', 'nlp', 'pytorch', 'tensorflow', 'mlops'],
+        DEVOPS: ['kubernetes', 'terraform', 'ci/cd', 'devops', 'sre', 'infrastructure', 'helm'],
         BACKEND: ['backend', 'back-end', 'server-side', 'api', 'microservices'],
         FULLSTACK: ['full stack', 'fullstack', 'full-stack'],
       },
       llm_provider: 'gemini',
-      llm_model: 'gemini-1.5-flash',
+      llm_model: 'gemini-2.5-flash',
       telegram_allowed_chat_ids: [],
       master_cv_url: '',
       master_cv_cached_text: '',
       master_cv_cached_at: '',
     };
-
     for (const [key, value] of Object.entries(defaults)) {
-      const exists = await this.settingRepository.count({ where: { key } });
-      if (exists === 0) {
-        this.logger.log(`Initializing default setting: ${key}`);
-        await this.set(key, value);
-      }
+      if ((await this.settingRepository.count({ where: { key } })) === 0) await this.set(key, value);
     }
   }
 }

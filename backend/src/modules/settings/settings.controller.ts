@@ -1,5 +1,7 @@
-import { Controller, Get, Body, Patch, Post } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { Body, Controller, Get, Patch, Post, Put } from '@nestjs/common';
+import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { MasterCvRevisionDto, UpdateMasterCvDto } from './dto/master-cv.dto';
+import { UpdateSettingsDto } from './dto/update-settings.dto';
 import { SettingsService } from './settings.service';
 
 @ApiTags('settings')
@@ -8,29 +10,45 @@ export class SettingsController {
   constructor(private readonly settingsService: SettingsService) {}
 
   @Get()
-  @ApiOperation({ summary: 'Get all settings' })
-  @ApiResponse({
-    status: 200,
-    description: 'Return all settings as a key-value object.',
-  })
-  async getAll() {
+  @ApiOperation({ summary: 'Get public application settings' })
+  getAll() {
     return this.settingsService.getAll();
   }
 
   @Patch()
-  @ApiOperation({ summary: 'Update settings' })
-  @ApiResponse({ status: 200, description: 'Settings updated successfully.' })
-  async update(@Body() settings: Record<string, any>) {
-    for (const [key, value] of Object.entries(settings)) {
-      await this.settingsService.set(key, value);
-    }
-    return this.settingsService.getAll();
+  @ApiOperation({ summary: 'Transactionally update public application settings' })
+  update(@Body() settings: UpdateSettingsDto) {
+    return this.settingsService.updateSettings(settings);
+  }
+
+  @Get('master-cv')
+  @ApiOperation({ summary: 'Get the editable master CV and version metadata' })
+  getMasterCv() {
+    return this.settingsService.getMasterCv();
+  }
+
+  @Put('master-cv')
+  @ApiOperation({ summary: 'Save the editable master CV' })
+  updateMasterCv(@Body() input: UpdateMasterCvDto) {
+    return this.settingsService.saveMasterCv(input);
+  }
+
+  @Post('master-cv/clear')
+  @ApiOperation({ summary: 'Clear the master CV while retaining one previous version' })
+  clearMasterCv(@Body() input: MasterCvRevisionDto) {
+    return this.settingsService.clearMasterCv(input.expected_revision);
+  }
+
+  @Post('master-cv/restore')
+  @ApiOperation({ summary: 'Swap the current and previous master CV versions' })
+  restoreMasterCv(@Body() input: MasterCvRevisionDto) {
+    return this.settingsService.restoreMasterCv(input.expected_revision);
   }
 
   @Post('cv/refresh')
-  @ApiOperation({ summary: 'Refresh master CV text' })
-  @ApiResponse({ status: 200, description: 'CV refreshed successfully.' })
-  async refreshCv() {
+  @ApiOperation({ summary: 'Deprecated: import the configured master CV URL' })
+  @ApiResponse({ status: 200, description: 'CV imported into the editable master CV.' })
+  refreshCv() {
     return this.settingsService.refreshCv();
   }
 }
