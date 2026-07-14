@@ -12,6 +12,17 @@ import { MetStatus } from './enums/met-status.enum';
 import { AnalysisStatus } from './enums/analysis-status.enum';
 import { ApplicationStageEvent } from './entities/application-stage-event.entity';
 import { ApplicationStage } from './enums/application-stage.enum';
+import { JobAnalysisRevision } from './entities/job-analysis-revision.entity';
+
+const analysisRevisions = {
+  create: jest.fn(
+    (value: Partial<JobAnalysisRevision>) => value as JobAnalysisRevision,
+  ),
+  save: jest.fn((value: JobAnalysisRevision) => Promise.resolve({
+    id: 'analysis-1',
+    ...value,
+  })),
+} as unknown as Repository<JobAnalysisRevision>;
 
 describe('JobsService', () => {
   const job = {
@@ -46,6 +57,7 @@ describe('JobsService', () => {
     const service = new JobsService(
       jobs,
       requirements,
+      analysisRevisions,
       {} as LlmService,
       {} as SettingsService,
       {} as DataSource,
@@ -146,6 +158,8 @@ describe('JobsService analysis persistence', () => {
         model: 'gemini-test',
         prompt_version: 'job-analysis-v2',
         analyzed_at: new Date('2026-07-14T00:00:00Z'),
+        cv_revision_id: 'cv-1',
+        cv_revision: 1,
       }),
     };
     const settings = {
@@ -156,6 +170,7 @@ describe('JobsService analysis persistence', () => {
     const service = new JobsService(
       jobs as unknown as Repository<Job>,
       requirements as unknown as Repository<JobRequirement>,
+      analysisRevisions,
       llm as unknown as LlmService,
       settings as unknown as SettingsService,
       {} as DataSource,
@@ -216,8 +231,11 @@ describe('JobsService application pipeline', () => {
   const service = new JobsService(
     {} as Repository<Job>,
     {} as Repository<JobRequirement>,
+    analysisRevisions,
     {} as LlmService,
-    {} as SettingsService,
+    {
+      getMasterCvContext: jest.fn().mockResolvedValue({ id: 'cv-1' }),
+    } as unknown as SettingsService,
     dataSource,
   );
 

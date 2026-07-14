@@ -17,6 +17,8 @@ import { BulkJobIdsDto, BulkUpdateJobStatusDto } from './dto/bulk-jobs.dto';
 import { BulkJobsResult } from './jobs.service';
 import { TransitionApplicationStageDto } from './dto/transition-application-stage.dto';
 import { Job } from './entities/job.entity';
+import { ReanalyzeJobsDto } from './dto/reanalyze-jobs.dto';
+import type { ReanalysisComparison } from './jobs.service';
 
 @ApiTags('jobs')
 @Controller('jobs')
@@ -55,6 +57,21 @@ export class JobsController {
   @ApiResponse({ status: 404, description: 'Job not found.' })
   reanalyze(@Param('id') id: string): Promise<Job> {
     return this.jobsService.reanalyze(id);
+  }
+
+  @Post('reanalyze')
+  @ApiOperation({ summary: 'Re-analyze one or more jobs and compare results' })
+  reanalyzeMany(@Body() input: ReanalyzeJobsDto): Promise<{
+    succeeded: ReanalysisComparison[];
+    failed: { id: string; error: string }[];
+  }> {
+    return this.jobsService.reanalyzeMany(input.ids);
+  }
+
+  @Get(':id/analysis-history')
+  @ApiOperation({ summary: 'Inspect immutable job analysis revisions' })
+  getAnalysisHistory(@Param('id') id: string) {
+    return this.jobsService.getAnalysisHistory(id);
   }
 
   @Patch(':id')

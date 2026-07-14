@@ -21,6 +21,21 @@ import { calculateScore, recommend } from './job-scoring';
 import { ApplicationStageEvent } from './entities/application-stage-event.entity';
 import { TransitionApplicationStageDto } from './dto/transition-application-stage.dto';
 import { ApplicationStage } from './enums/application-stage.enum';
+import { JobAnalysisRevision } from './entities/job-analysis-revision.entity';
+
+export interface ReanalysisComparison {
+  id: string;
+  before: {
+    score: number | null;
+    recommendation: string | null;
+    requirements: string[];
+  };
+  after: {
+    score: number | null;
+    recommendation: string | null;
+    requirements: string[];
+  };
+}
 
 export interface BulkJobsResult {
   succeeded: string[];
@@ -36,6 +51,8 @@ export class JobsService {
     private readonly jobRepository: Repository<Job>,
     @InjectRepository(JobRequirement)
     private readonly requirementRepository: Repository<JobRequirement>,
+    @InjectRepository(JobAnalysisRevision)
+    private readonly analysisRevisionRepository: Repository<JobAnalysisRevision>,
     private readonly llmService: LlmService,
     private readonly settingsService: SettingsService,
     private readonly dataSource: DataSource,
@@ -98,6 +115,46 @@ export class JobsService {
     );
   }
 
+  async reanalyzeMany(ids: string[]): Promise<{
+    succeeded: ReanalysisComparison[];
+    failed: { id: string; error: string }[];
+  }> {
+    const results = await Promise.allSettled(
+      ids.map(async (id) => {
+        const beforeJob = await this.findOne(id);
+        const before = this.analysisSnapshot(beforeJob);
+        const afterJob = await this.reanalyze(id);
+        return { id, before, after: this.analysisSnapshot(afterJob) };
+      }),
+    );
+    return results.reduce<{
+      succeeded: ReanalysisComparison[];
+      failed: { id: string; error: string }[];
+    }>(
+      (output, result, index) => {
+        if (result.status === 'fulfilled') output.succeeded.push(result.value);
+        else
+          output.failed.push({
+            id: ids[index],
+            error:
+              result.reason instanceof Error
+                ? result.reason.message
+                : 'Reanalysis failed',
+          });
+        return output;
+      },
+      { succeeded: [], failed: [] },
+    );
+  }
+
+  async getAnalysisHistory(id: string): Promise<JobAnalysisRevision[]> {
+    await this.findOne(id);
+    return this.analysisRevisionRepository.find({
+      where: { job_id: id },
+      order: { analyzed_at: 'DESC' },
+    });
+  }
+
   private async processJobAnalysis(
     job: Job,
     description: string,
@@ -151,6 +208,8 @@ export class JobsService {
         analysis_model: result.model,
         prompt_version: result.prompt_version,
         analyzed_at: result.analyzed_at,
+        cv_revision_id: result.cv_revision_id,
+        cv_revision: result.cv_revision,
         requirements: analysis.requirements.map((req, index) =>
           this.requirementRepository.create({
             name: req.name,
@@ -167,6 +226,22 @@ export class JobsService {
       if (job.requirements?.length) {
         await this.requirementRepository.delete({ job_id: job.id });
       }
+      const revision = await this.analysisRevisionRepository.save(
+        this.analysisRevisionRepository.create({
+          job_id: job.id,
+          cv_revision_id: result.cv_revision_id,
+          cv_revision: result.cv_revision,
+          status: AnalysisStatus.COMPLETED,
+          result: analysis,
+          score,
+          recommendation,
+          error: null,
+          model: result.model,
+          prompt_version: result.prompt_version,
+          analyzed_at: result.analyzed_at,
+        }),
+      );
+      job.analysis_revision_id = revision.id;
       return this.jobRepository.save(job);
     } catch (error: unknown) {
       const message =
@@ -179,6 +254,22 @@ export class JobsService {
       this.logger.warn(
         `Job analysis failed for ${job.id}: ${job.analysis_error}`,
       );
+      const revision = await this.analysisRevisionRepository.save(
+        this.analysisRevisionRepository.create({
+          job_id: job.id,
+          cv_revision_id: job.cv_revision_id,
+          cv_revision: job.cv_revision,
+          status: AnalysisStatus.FAILED,
+          result: null,
+          score: null,
+          recommendation: null,
+          error: job.analysis_error,
+          model: null,
+          prompt_version: null,
+          analyzed_at: job.analyzed_at,
+        }),
+      );
+      job.analysis_revision_id = revision.id;
       return this.jobRepository.save(job);
     }
   }
@@ -372,6 +463,14 @@ export class JobsService {
       ) {
         job.applied_at = occurredAt;
       }
+      if (
+        dto.new_stage === ApplicationStage.APPLIED &&
+        !job.application_cv_revision_id
+      ) {
+        job.application_cv_revision_id = (
+          await this.settingsService.getMasterCvContext()
+        ).id;
+      }
       await jobs.save(job);
 
       return jobs.findOneOrFail({
@@ -402,5 +501,15 @@ export class JobsService {
       Object.values(ApplicationStage).indexOf(to) >
       Object.values(ApplicationStage).indexOf(from)
     );
+  }
+
+  private analysisSnapshot(job: Job): ReanalysisComparison['before'] {
+    return {
+      score: job.llm_score,
+      recommendation: job.recommendation,
+      requirements: (job.requirements ?? []).map(
+        (requirement) => requirement.name,
+      ),
+    };
   }
 }

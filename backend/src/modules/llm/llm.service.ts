@@ -32,7 +32,8 @@ export class LlmService {
       'llm_model',
       'gemini-2.5-flash',
     );
-    const cvText = await this.settingsService.getMasterCvText();
+    const cv = await this.settingsService.getMasterCvContext();
+    const cvText = cv.text;
 
     if (!cvText) {
       this.logger.warn(
@@ -50,6 +51,8 @@ export class LlmService {
         model,
         prompt_version: JOB_PROMPT_VERSION,
         analyzed_at: new Date(),
+        cv_revision_id: cv.id,
+        cv_revision: cv.revision,
       };
     }
 
@@ -69,7 +72,8 @@ export class LlmService {
       'llm_model',
       'gemini-2.5-flash',
     );
-    const cvText = await this.settingsService.getMasterCvText();
+    const cv = await this.settingsService.getMasterCvContext();
+    const cvText = cv.text;
 
     if (!cvText) {
       throw new Error('Master CV text is empty. Cannot generate gap summary.');
@@ -81,6 +85,8 @@ export class LlmService {
         model,
         prompt_version: GAP_PROMPT_VERSION,
         analyzed_at: new Date(),
+        cv_revision_id: cv.id,
+        cv_revision: cv.revision,
       };
     }
 

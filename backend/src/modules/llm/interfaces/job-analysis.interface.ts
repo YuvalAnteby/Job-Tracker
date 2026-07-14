@@ -38,6 +38,8 @@ export interface AnalysisEnvelope<T> {
   model: string;
   prompt_version: string;
   analyzed_at: Date;
+  cv_revision_id: string | null;
+  cv_revision: number | null;
 }
 
 export interface JobSummaryInput {

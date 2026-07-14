@@ -1,6 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../../api/client';
-import type { MasterCv, MasterCvUpdate, Settings } from '../../types/settings';
+import type {
+  MasterCv,
+  MasterCvRevision,
+  MasterCvUpdate,
+  Settings,
+} from '../../types/settings';
 
 export const useSettingsData = () => {
   const queryClient = useQueryClient();
@@ -10,7 +15,14 @@ export const useSettingsData = () => {
   });
   const cvQuery = useQuery({
     queryKey: ['settings', 'master-cv'],
-    queryFn: async () => (await apiClient.get<MasterCv>('/settings/master-cv')).data,
+    queryFn: async () =>
+      (await apiClient.get<MasterCv>('/settings/master-cv')).data,
+  });
+  const cvHistoryQuery = useQuery({
+    queryKey: ['settings', 'master-cv', 'history'],
+    queryFn: async () =>
+      (await apiClient.get<MasterCvRevision[]>('/settings/master-cv/history'))
+        .data,
   });
 
   const updateSettings = useMutation({
@@ -21,18 +33,49 @@ export const useSettingsData = () => {
   const saveCv = useMutation({
     mutationFn: async (input: MasterCvUpdate) =>
       (await apiClient.put<MasterCv>('/settings/master-cv', input)).data,
-    onSuccess: (cv) => queryClient.setQueryData(['settings', 'master-cv'], cv),
+    onSuccess: (cv) => {
+      queryClient.setQueryData(['settings', 'master-cv'], cv);
+      void queryClient.invalidateQueries({
+        queryKey: ['settings', 'master-cv', 'history'],
+      });
+    },
   });
   const clearCv = useMutation({
     mutationFn: async (expected_revision: number) =>
-      (await apiClient.post<MasterCv>('/settings/master-cv/clear', { expected_revision })).data,
-    onSuccess: (cv) => queryClient.setQueryData(['settings', 'master-cv'], cv),
+      (
+        await apiClient.post<MasterCv>('/settings/master-cv/clear', {
+          expected_revision,
+        })
+      ).data,
+    onSuccess: (cv) => {
+      queryClient.setQueryData(['settings', 'master-cv'], cv);
+      void queryClient.invalidateQueries({
+        queryKey: ['settings', 'master-cv', 'history'],
+      });
+    },
   });
   const restoreCv = useMutation({
     mutationFn: async (expected_revision: number) =>
-      (await apiClient.post<MasterCv>('/settings/master-cv/restore', { expected_revision })).data,
-    onSuccess: (cv) => queryClient.setQueryData(['settings', 'master-cv'], cv),
+      (
+        await apiClient.post<MasterCv>('/settings/master-cv/restore', {
+          expected_revision,
+        })
+      ).data,
+    onSuccess: (cv) => {
+      queryClient.setQueryData(['settings', 'master-cv'], cv);
+      void queryClient.invalidateQueries({
+        queryKey: ['settings', 'master-cv', 'history'],
+      });
+    },
   });
 
-  return { settingsQuery, cvQuery, updateSettings, saveCv, clearCv, restoreCv };
+  return {
+    settingsQuery,
+    cvQuery,
+    cvHistoryQuery,
+    updateSettings,
+    saveCv,
+    clearCv,
+    restoreCv,
+  };
 };

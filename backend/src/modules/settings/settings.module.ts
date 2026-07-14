@@ -3,9 +3,10 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Setting } from './entities/setting.entity';
 import { SettingsService } from './settings.service';
 import { SettingsController } from './settings.controller';
+import { CvRevision } from './entities/cv-revision.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Setting])],
+  imports: [TypeOrmModule.forFeature([Setting, CvRevision])],
   controllers: [SettingsController],
   providers: [SettingsService],
   exports: [SettingsService, TypeOrmModule],

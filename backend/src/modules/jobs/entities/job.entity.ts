@@ -114,6 +114,15 @@ export class Job {
   @Column({ type: 'timestamptz', nullable: true })
   analyzed_at: Date | null;
 
+  @Column('uuid', { nullable: true })
+  analysis_revision_id: string | null;
+
+  @Column('uuid', { nullable: true })
+  cv_revision_id: string | null;
+
+  @Column('int', { nullable: true })
+  cv_revision: number | null;
+
   @CreateDateColumn({ type: 'timestamptz' })
   added_at: Date;
 
@@ -122,6 +131,9 @@ export class Job {
 
   @Column({ type: 'timestamptz', nullable: true })
   applied_at: Date | null;
+
+  @Column('uuid', { nullable: true })
+  application_cv_revision_id: string | null;
 
   @Column({ type: 'enum', enum: ListingState, default: ListingState.OPEN })
   listing_state: ListingState;

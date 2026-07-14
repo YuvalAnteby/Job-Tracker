@@ -89,6 +89,11 @@ export class GapService {
         analysis_model: summaryResult.model,
         prompt_version: summaryResult.prompt_version,
         analyzed_at: summaryResult.analyzed_at,
+        cv_revision_id: summaryResult.cv_revision_id,
+        cv_revision: summaryResult.cv_revision,
+        analysis_revision_ids: jobs
+          .map((job) => job.analysis_revision_id)
+          .filter((id): id is string => Boolean(id)),
       });
 
       await this.gapSummaryRepository.save(gapSummary);
@@ -114,6 +119,9 @@ export class GapService {
           analysis_model: null,
           prompt_version: null,
           analyzed_at: new Date(),
+          cv_revision_id: null,
+          cv_revision: null,
+          analysis_revision_ids: [],
         }),
       );
     }
