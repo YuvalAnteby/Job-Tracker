@@ -69,6 +69,13 @@ export enum Recommendation {
   SKIP = 'SKIP',
 }
 
+export enum AnalysisClassification {
+  TARGET = 'TARGET',
+  STRETCH = 'STRETCH',
+  RESEARCH = 'RESEARCH',
+  IRRELEVANT = 'IRRELEVANT',
+}
+
 export interface ScoreBreakdown {
   hard_requirements: number;
   preferred_requirements: number;
@@ -139,6 +146,8 @@ export interface Job {
   llm_summary?: string;
   score_breakdown: ScoreBreakdown | null;
   recommendation: Recommendation | null;
+  suggested_classification: AnalysisClassification | null;
+  classification_override: AnalysisClassification | null;
   analysis_status: AnalysisStatus;
   analysis_error: string | null;
   analysis_model: string | null;
@@ -154,6 +163,7 @@ export interface Job {
   effective_score: number | null;
   effective_is_applicable: boolean;
   effective_domain: Domain;
+  effective_classification: AnalysisClassification | null;
 
   status: JobStatus;
   listing_state: ListingState;
@@ -175,6 +185,7 @@ export interface Job {
 export interface JobFilters {
   domains?: Domain[];
   statuses?: JobStatus[];
+  classifications?: AnalysisClassification[];
   fit?: 'all' | 'applicable' | 'interesting';
   search?: string;
 }
@@ -202,4 +213,17 @@ export interface GapSummary {
   domain_filter: Domain | null;
   summary: GapSummaryResult;
   job_count: number;
+  job_ids: string[];
+  profile_revision: number;
+  cohort_options: {
+    domain_filter: Domain | null;
+    include_research: boolean;
+  };
+}
+
+export interface CohortPreview {
+  included_job_ids: string[];
+  excluded: { id: string; reason: string }[];
+  profile_revision: number;
+  options: { domain_filter: Domain | null; include_research: boolean };
 }

@@ -81,10 +81,10 @@ const SkillRow = ({ skill }: { skill: SkillAggregate }) => (
 
 const Skills = () => {
   const [domain, setDomain] = useState<Domain | 'ALL'>('ALL');
-  const [includeAll, setIncludeAll] = useState(false);
+  const [includeResearch, setIncludeResearch] = useState(false);
   const { data, isLoading, isError, refetch, alias, rebuild } = useSkillsData(
     domain === 'ALL' ? undefined : domain,
-    includeAll,
+    includeResearch,
   );
   const { register, handleSubmit, reset } = useForm<AliasForm>();
   const saveAlias = handleSubmit((values) => {
@@ -123,12 +123,12 @@ const Skills = () => {
           </label>
           <label className="flex h-10 items-center gap-2 rounded-md border border-gray-300 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-900">
             <input
-              checked={includeAll}
+              checked={includeResearch}
               className="h-4 w-4 accent-blue-600"
-              onChange={(event) => setIncludeAll(event.target.checked)}
+              onChange={(event) => setIncludeResearch(event.target.checked)}
               type="checkbox"
             />
-            Include excluded jobs
+            Include research jobs
           </label>
           <button
             className="inline-flex h-10 items-center gap-2 rounded-md bg-blue-600 px-4 text-sm font-medium text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:opacity-50"

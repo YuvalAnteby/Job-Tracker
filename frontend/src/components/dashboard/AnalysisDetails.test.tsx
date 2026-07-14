@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import {
   AnalysisStatus,
+  AnalysisClassification,
   ApplicationStage,
   Domain,
   Job,
@@ -31,6 +32,8 @@ const job = (status: AnalysisStatus): Job => ({
         }
       : null,
   recommendation: Recommendation.APPLY,
+  suggested_classification: AnalysisClassification.TARGET,
+  classification_override: null,
   analysis_status: status,
   analysis_error:
     status === AnalysisStatus.FAILED ? 'Invalid model output.' : null,
@@ -41,6 +44,7 @@ const job = (status: AnalysisStatus): Job => ({
   effective_score: 82,
   effective_is_applicable: true,
   effective_domain: Domain.BACKEND,
+  effective_classification: AnalysisClassification.TARGET,
   status: JobStatus.ACTIVE,
   listing_state: ListingState.OPEN,
   user_decision: UserDecision.UNDECIDED,

@@ -3,13 +3,13 @@ import toast from 'react-hot-toast';
 import { apiClient } from '../../api/client';
 import type { Domain, SkillMatrix } from '../../types';
 
-export const useSkillsData = (domain?: Domain, includeAll = false) => {
+export const useSkillsData = (domain?: Domain, includeResearch = false) => {
   const queryClient = useQueryClient();
   const query = useQuery({
-    queryKey: ['skills', domain, includeAll],
+    queryKey: ['skills', domain, includeResearch],
     queryFn: async (): Promise<SkillMatrix> => {
       const response = await apiClient.get<SkillMatrix>('/skills', {
-        params: { domain, include_all: includeAll },
+        params: { domain, include_research: includeResearch },
       });
       return response.data;
     },

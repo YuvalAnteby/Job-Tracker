@@ -1,5 +1,5 @@
 import React from 'react';
-import { Domain, JobStatus } from '../../types';
+import { AnalysisClassification, Domain, JobStatus } from '../../types';
 import type { JobFilters } from '../../types';
 import { Search } from 'lucide-react';
 
@@ -31,6 +31,17 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
     setFilters((prev) => ({
       ...prev,
       statuses: next.length > 0 ? next : undefined,
+    }));
+  };
+
+  const toggleClassification = (classification: AnalysisClassification) => {
+    const current = filters.classifications || [];
+    const next = current.includes(classification)
+      ? current.filter((item) => item !== classification)
+      : [...current, classification];
+    setFilters((previous) => ({
+      ...previous,
+      classifications: next.length ? next : undefined,
     }));
   };
 
@@ -98,6 +109,27 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
                 {status}
               </button>
             ))}
+        </div>
+      </div>
+
+      <div>
+        <h3 className="text-xs font-semibold text-gray-500 dark:text-slate-400 mb-4 uppercase tracking-wider">
+          Classification
+        </h3>
+        <div className="flex flex-col gap-3">
+          {Object.values(AnalysisClassification).map((classification) => (
+            <button
+              key={classification}
+              onClick={() => toggleClassification(classification)}
+              className={`text-left text-sm font-medium transition-colors ${
+                filters.classifications?.includes(classification)
+                  ? 'text-gray-900 dark:text-white'
+                  : 'text-gray-400 dark:text-slate-600 hover:text-gray-600 dark:hover:text-slate-400'
+              }`}
+            >
+              {classification}
+            </button>
+          ))}
         </div>
       </div>
 

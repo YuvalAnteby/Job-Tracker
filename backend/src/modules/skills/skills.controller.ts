@@ -19,7 +19,7 @@ export class SkillsController {
   @ApiOperation({ summary: 'Get the evidence-backed skill matrix' })
   @ApiOkResponse({ description: 'Normalized skill aggregates and evidence.' })
   getMatrix(@Query() query: GetSkillsQueryDto): Promise<SkillMatrix> {
-    return this.skillsService.getMatrix(query.domain, query.include_all);
+    return this.skillsService.getMatrix(query.domain, query.include_research);
   }
 
   @Post('aliases')

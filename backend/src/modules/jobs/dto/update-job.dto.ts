@@ -12,6 +12,7 @@ import { JobStatus } from '../enums/job-status.enum';
 import { Domain } from '../enums/domain.enum';
 import { ListingState } from '../enums/listing-state.enum';
 import { UserDecision } from '../enums/user-decision.enum';
+import { AnalysisClassification } from '../enums/analysis-classification.enum';
 
 export class UpdateJobDto extends PartialType(CreateJobDto) {
   @ApiProperty({ enum: JobStatus, required: false })
@@ -58,4 +59,9 @@ export class UpdateJobDto extends PartialType(CreateJobDto) {
   @IsBoolean()
   @IsOptional()
   include_in_gap?: boolean;
+
+  @ApiProperty({ enum: AnalysisClassification, required: false })
+  @IsEnum(AnalysisClassification)
+  @IsOptional()
+  classification_override?: AnalysisClassification;
 }

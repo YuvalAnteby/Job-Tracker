@@ -5,6 +5,7 @@ import { JobRequirement } from '../jobs/entities/job-requirement.entity';
 import { Job } from '../jobs/entities/job.entity';
 import { Domain } from '../jobs/enums/domain.enum';
 import { MetStatus } from '../jobs/enums/met-status.enum';
+import { AnalysisClassification } from '../jobs/enums/analysis-classification.enum';
 import { SkillAlias } from './entities/skill-alias.entity';
 import { Skill } from './entities/skill.entity';
 import {
@@ -158,14 +159,20 @@ export class SkillsService {
     return { normalized: requirements.length - excluded, excluded };
   }
 
-  async getMatrix(domain?: Domain, includeAll = false): Promise<SkillMatrix> {
+  async getMatrix(
+    domain?: Domain,
+    includeResearch = false,
+  ): Promise<SkillMatrix> {
     const jobs = await this.jobRepository.find({
       relations: { requirements: { skill: true } },
     });
     const candidates = jobs.filter(
       (job) =>
-        (includeAll || job.include_in_gap) &&
-        (!domain || job.effective_domain === domain),
+        job.include_in_gap &&
+        (!domain || job.effective_domain === domain) &&
+        job.effective_classification !== AnalysisClassification.IRRELEVANT &&
+        (includeResearch ||
+          job.effective_classification !== AnalysisClassification.RESEARCH),
     );
     const fingerprints = new Set(
       candidates.map((job) =>

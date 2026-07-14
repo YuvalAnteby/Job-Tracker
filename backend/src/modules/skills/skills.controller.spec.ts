@@ -8,7 +8,7 @@ describe('SkillsController', () => {
       getMatrix,
     } as unknown as SkillsService);
 
-    await controller.getMatrix({ include_all: true });
+    await controller.getMatrix({ include_research: true });
 
     expect(getMatrix).toHaveBeenCalledWith(undefined, true);
   });
