@@ -7,6 +7,9 @@ export interface Settings {
   llm_provider: 'gemini';
   llm_model: string;
   telegram_allowed_chat_ids: number[];
+  reminders_enabled: boolean;
+  reminder_default_days: number;
+  reminder_timezone: string;
 }
 
 export type CvSource = 'manual' | 'file' | 'legacy_url';

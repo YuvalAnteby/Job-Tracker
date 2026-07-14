@@ -54,6 +54,9 @@ const PUBLIC_SETTING_KEYS = [
   'llm_provider',
   'llm_model',
   'telegram_allowed_chat_ids',
+  'reminders_enabled',
+  'reminder_default_days',
+  'reminder_timezone',
 ] as const;
 const UPDATABLE_SETTING_KEYS = [
   'score_threshold',
@@ -61,6 +64,9 @@ const UPDATABLE_SETTING_KEYS = [
   'domain_keywords',
   'llm_model',
   'telegram_allowed_chat_ids',
+  'reminders_enabled',
+  'reminder_default_days',
+  'reminder_timezone',
 ] as const;
 
 @Injectable()
@@ -514,6 +520,17 @@ export class SettingsService implements OnModuleInit {
         }
       }
     }
+    if (update.reminder_timezone !== undefined) {
+      try {
+        new Intl.DateTimeFormat('en', {
+          timeZone: update.reminder_timezone,
+        }).format();
+      } catch {
+        throw new BadRequestException(
+          'Reminder timezone must be a valid IANA timezone.',
+        );
+      }
+    }
   }
 
   private assertRevision(state: MasterCvState, expectedRevision: number) {
@@ -582,6 +599,9 @@ export class SettingsService implements OnModuleInit {
       llm_provider: 'gemini',
       llm_model: 'gemini-2.5-flash',
       telegram_allowed_chat_ids: [],
+      reminders_enabled: true,
+      reminder_default_days: 3,
+      reminder_timezone: 'Asia/Jerusalem',
       master_cv_url: '',
       master_cv_cached_text: '',
       master_cv_cached_at: '',

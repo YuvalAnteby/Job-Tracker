@@ -4,6 +4,7 @@ import {
   Bell,
   Bot,
   Check,
+  Clock,
   FileText,
   FolderOpen,
   RotateCcw,
@@ -30,13 +31,20 @@ import {
 } from './cvFile';
 import { useSettingsData } from './useSettingsData';
 
-type Section = 'cv' | 'target' | 'analysis' | 'domains' | 'integrations';
+type Section =
+  'cv' | 'target' | 'analysis' | 'domains' | 'reminders' | 'integrations';
 const sections: {
   id: Section;
   label: string;
   description: string;
   icon: typeof FileText;
 }[] = [
+  {
+    id: 'reminders',
+    label: 'Reminders',
+    description: 'Follow-up defaults',
+    icon: Clock,
+  },
   {
     id: 'target',
     label: 'Target Profile',
@@ -157,6 +165,7 @@ export default function Settings() {
           {section === 'target' && <TargetProfileSection />}
           {section === 'analysis' && <AnalysisSection />}
           {section === 'domains' && <DomainsSection />}
+          {section === 'reminders' && <RemindersSection />}
           {section === 'integrations' && <IntegrationsSection />}
         </main>
       </div>
@@ -941,6 +950,109 @@ function DomainsSection() {
                 onSuccess: () => toast.success('Domain settings saved'),
                 onError: () =>
                   toast.error('Domain settings could not be saved'),
+              },
+            )
+          }
+          reset={reset}
+        />
+      </div>
+    </section>
+  );
+}
+
+function RemindersSection(): React.JSX.Element {
+  const { settingsQuery, updateSettings } = useSettingsData();
+  const [enabled, setEnabled] = useState(true);
+  const [days, setDays] = useState(3);
+  const [timezone, setTimezone] = useState('Asia/Jerusalem');
+  useEffect(() => {
+    if (!settingsQuery.data) return;
+    setEnabled(settingsQuery.data.reminders_enabled);
+    setDays(settingsQuery.data.reminder_default_days);
+    setTimezone(settingsQuery.data.reminder_timezone);
+  }, [settingsQuery.data]);
+  if (settingsQuery.isLoading) return <LoadingState />;
+  if (settingsQuery.isError || !settingsQuery.data)
+    return <ErrorState retry={() => void settingsQuery.refetch()} />;
+  const current = settingsQuery.data;
+  const dirty =
+    enabled !== current.reminders_enabled ||
+    days !== current.reminder_default_days ||
+    timezone !== current.reminder_timezone;
+  const reset = (): void => {
+    setEnabled(current.reminders_enabled);
+    setDays(current.reminder_default_days);
+    setTimezone(current.reminder_timezone);
+  };
+  return (
+    <section>
+      <SectionHeader
+        title="Reminders"
+        description="Set follow-up defaults and the timezone used to group due actions."
+      />
+      <div className="max-w-2xl space-y-5">
+        <label className="flex items-start gap-3 border-y border-slate-200 py-4 dark:border-slate-800">
+          <input
+            type="checkbox"
+            checked={enabled}
+            onChange={(event) => setEnabled(event.target.checked)}
+            className="mt-0.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+          />
+          <span>
+            <span className="block text-sm font-medium">
+              Telegram reminders
+            </span>
+            <span className="mt-0.5 block text-xs text-slate-500">
+              Only allow-listed chat IDs receive action labels and job names.
+              Notes and CV content are never sent.
+            </span>
+          </span>
+        </label>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="text-sm font-medium">
+            Default follow-up delay
+            <span className="mt-1 flex items-center gap-2">
+              <input
+                type="number"
+                min="0"
+                max="365"
+                value={days}
+                onChange={(event) => setDays(Number(event.target.value))}
+                className={inputClass}
+              />
+              <span className="text-xs font-normal text-slate-500">days</span>
+            </span>
+          </label>
+          <label className="text-sm font-medium">
+            Timezone
+            <input
+              value={timezone}
+              onChange={(event) => setTimezone(event.target.value)}
+              className={cn(inputClass, 'mt-1')}
+              placeholder="Asia/Jerusalem"
+            />
+          </label>
+        </div>
+        <SectionActions
+          dirty={
+            dirty &&
+            Number.isInteger(days) &&
+            days >= 0 &&
+            days <= 365 &&
+            Boolean(timezone.trim())
+          }
+          pending={updateSettings.isPending}
+          save={() =>
+            updateSettings.mutate(
+              {
+                reminders_enabled: enabled,
+                reminder_default_days: days,
+                reminder_timezone: timezone.trim(),
+              },
+              {
+                onSuccess: () => toast.success('Reminder settings saved'),
+                onError: () =>
+                  toast.error('Reminder settings could not be saved'),
               },
             )
           }

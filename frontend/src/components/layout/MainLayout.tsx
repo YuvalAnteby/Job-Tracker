@@ -9,6 +9,7 @@ import {
   Menu,
   X,
   Columns3,
+  ChartNoAxesCombined,
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { AddJobModal } from '../dashboard/AddJobModal';
@@ -25,6 +26,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const navigation = [
     { name: 'Dashboard', href: '/', icon: LayoutDashboard },
     { name: 'Pipeline', href: '/pipeline', icon: Columns3 },
+    { name: 'Analytics', href: '/analytics', icon: ChartNoAxesCombined },
     { name: 'Gap Summary', href: '/gap', icon: ShieldAlert },
     { name: 'Settings', href: '/settings', icon: Settings },
   ];

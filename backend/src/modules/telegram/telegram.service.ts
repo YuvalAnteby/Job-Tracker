@@ -50,7 +50,7 @@ export class TelegramService {
 
   @Command('jobs')
   async onJobs(ctx: Context): Promise<void> {
-    const message = (ctx.message as any)?.text || '';
+    const message = this.messageText(ctx);
     const args = message.split(' ');
     const limit = args[1] ? parseInt(args[1], 10) : 5;
 
@@ -94,17 +94,17 @@ export class TelegramService {
 
   @Command('gap')
   async onGap(ctx: Context): Promise<void> {
-    const message = (ctx.message as any)?.text || '';
+    const message = this.messageText(ctx);
     const args = message.split(' ');
     const domainArg = args[1]?.toUpperCase();
-    
+
     let domain: Domain | undefined;
     if (domainArg && Object.values(Domain).includes(domainArg as Domain)) {
       domain = domainArg as Domain;
     }
 
     await this.gapService.generate({ domain_filter: domain });
-    
+
     await ctx.reply(
       `⏳ Gap analysis enqueued${domain ? ` for <b>${domain}</b>` : ''}. I will notify you when it's ready.`,
       { parse_mode: 'HTML' },
@@ -113,7 +113,7 @@ export class TelegramService {
 
   @Command('status')
   async onStatus(ctx: Context): Promise<void> {
-    const message = (ctx.message as any)?.text || '';
+    const message = this.messageText(ctx);
     const args = message.split(' ');
     const prefix = args[1];
 
@@ -152,7 +152,9 @@ ${job.llm_summary || 'No summary available.'}
     );
 
     if (allowedChatIds.length === 0) {
-      this.logger.warn('No allowed chat IDs configured for Telegram notifications.');
+      this.logger.warn(
+        'No allowed chat IDs configured for Telegram notifications.',
+      );
       return;
     }
 
@@ -161,9 +163,26 @@ ${job.llm_summary || 'No summary available.'}
         await this.bot.telegram.sendMessage(chatId, message, {
           parse_mode: 'HTML',
         });
-      } catch (error) {
-        this.logger.error(`Failed to send message to chat ${chatId}: ${error.message}`);
+      } catch (error: unknown) {
+        this.logger.error(
+          `Failed to send message to chat ${chatId}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        );
       }
     }
+  }
+
+  async sendAllowedMessage(chatId: number, message: string): Promise<void> {
+    const allowedChatIds = await this.settingsService.get<number[]>(
+      'telegram_allowed_chat_ids',
+      [],
+    );
+    if (!allowedChatIds.includes(chatId)) {
+      throw new Error('Telegram chat is not allow-listed');
+    }
+    await this.bot.telegram.sendMessage(chatId, message);
+  }
+
+  private messageText(ctx: Context): string {
+    return ctx.message && 'text' in ctx.message ? ctx.message.text : '';
   }
 }

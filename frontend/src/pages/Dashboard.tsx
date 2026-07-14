@@ -39,6 +39,8 @@ import {
 import { format } from 'date-fns';
 import { cn } from '../utils/cn';
 import toast from 'react-hot-toast';
+import { Link } from 'react-router-dom';
+import { useAttention } from '../hooks/useApplications';
 
 const columnHelper = createColumnHelper<Job>();
 
@@ -58,6 +60,7 @@ export const Dashboard: React.FC = () => {
   const updateJob = useUpdateJob();
   const deleteJob = useDeleteJob();
   const bulkJobs = useBulkJobs();
+  const attention = useAttention();
 
   React.useEffect(() => {
     const visibleIds = new Set(jobs.map((job) => job.id));
@@ -169,7 +172,9 @@ export const Dashboard: React.FC = () => {
             }
             className="rounded border border-slate-200 bg-transparent px-2 py-1 text-xs dark:border-slate-700"
           >
-            <option value="" disabled>Unclassified</option>
+            <option value="" disabled>
+              Unclassified
+            </option>
             {Object.values(AnalysisClassification).map((classification) => (
               <option key={classification} value={classification}>
                 {classification}
@@ -229,7 +234,9 @@ export const Dashboard: React.FC = () => {
                     },
                   )
                 }
-                disabled={job.application_stage !== ApplicationStage.NOT_APPLIED}
+                disabled={
+                  job.application_stage !== ApplicationStage.NOT_APPLIED
+                }
                 className="p-1 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors text-blue-600 dark:text-blue-400"
                 title="Mark Applied"
               >
@@ -289,6 +296,84 @@ export const Dashboard: React.FC = () => {
 
   return (
     <div className="flex flex-col space-y-4">
+      <section
+        aria-labelledby="dashboard-attention"
+        className="border-y border-slate-200 py-4 dark:border-slate-800"
+      >
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div>
+            <h1
+              id="dashboard-attention"
+              className="text-base font-semibold text-slate-900 dark:text-slate-100"
+            >
+              Needs attention
+            </h1>
+            <p className="text-xs text-slate-500">
+              Your next application actions, grouped by urgency.
+            </p>
+          </div>
+          <Link
+            to="/analytics"
+            className="text-xs font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400"
+          >
+            View all
+          </Link>
+        </div>
+        {attention.isLoading && (
+          <div className="h-16 animate-pulse rounded-md bg-slate-200 dark:bg-slate-800" />
+        )}
+        {attention.isError && (
+          <p role="alert" className="text-sm text-red-600">
+            Attention items could not be loaded.
+          </p>
+        )}
+        {attention.data &&
+          attention.data.overdue.length +
+            attention.data.due_today.length +
+            attention.data.upcoming.length ===
+            0 && (
+            <p className="text-sm text-slate-500">
+              Nothing needs attention.{' '}
+              <Link
+                to="/pipeline"
+                className="font-semibold text-blue-600 dark:text-blue-400"
+              >
+                Schedule a next action in Pipeline.
+              </Link>
+            </p>
+          )}
+        {attention.data && (
+          <div className="grid gap-4 sm:grid-cols-3">
+            {(
+              [
+                ['Overdue', attention.data.overdue],
+                ['Due today', attention.data.due_today],
+                ['Upcoming', attention.data.upcoming],
+              ] as const
+            ).map(([label, items]) => (
+              <section key={label} aria-label={label}>
+                <h2 className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  {label} · {items.length}
+                </h2>
+                {items.slice(0, 2).map((item) => (
+                  <p
+                    key={item.action.id}
+                    className="truncate text-sm text-slate-700 dark:text-slate-200"
+                  >
+                    <span className="font-medium">{item.action.label}</span>{' '}
+                    <span className="text-xs text-slate-500">
+                      {item.job.company_name}
+                    </span>
+                  </p>
+                ))}
+                {!items.length && (
+                  <p className="text-xs text-slate-400">None</p>
+                )}
+              </section>
+            ))}
+          </div>
+        )}
+      </section>
       {/* Filters Toggle Button */}
       <div className="flex justify-start px-2">
         <button

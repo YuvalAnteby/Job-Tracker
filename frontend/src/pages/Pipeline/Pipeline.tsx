@@ -16,6 +16,10 @@ import {
 } from '../../types';
 import { cn } from '../../utils/cn';
 import { nextStages, stageLabel, stageOrder } from './pipeline-utils';
+import {
+  useApplicationActions,
+  useReminderDefaults,
+} from '../../hooks/useApplications';
 
 type View = 'board' | 'list';
 
@@ -33,8 +37,70 @@ interface PipelineJobProps {
   compact?: boolean;
 }
 
+interface ActionForm {
+  label: string;
+  due_at: string;
+}
+
 const controlClass =
   'rounded-md border border-slate-300 bg-slate-50 px-2 py-1.5 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/40 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200';
+
+const NextActionForm = ({ job }: { job: Job }): ReactElement => {
+  const { schedule } = useApplicationActions();
+  const { data: reminderDefaults } = useReminderDefaults();
+  const { register, handleSubmit, reset } = useForm<ActionForm>();
+  return (
+    <form
+      className="mt-2 grid grid-cols-[1fr_auto] gap-2 border-t border-slate-200 pt-3 dark:border-slate-800"
+      onSubmit={handleSubmit((values) =>
+        schedule.mutate(
+          {
+            jobId: job.id,
+            label: values.label,
+            due_at: values.due_at
+              ? new Date(values.due_at).toISOString()
+              : undefined,
+          },
+          {
+            onSuccess: () => {
+              toast.success('Next action scheduled');
+              reset();
+            },
+            onError: () => toast.error('Next action could not be scheduled'),
+          },
+        ),
+      )}
+    >
+      <label className="sr-only" htmlFor={`action-${job.id}`}>
+        Next action for {job.title}
+      </label>
+      <input
+        id={`action-${job.id}`}
+        placeholder="Next action"
+        maxLength={200}
+        className={controlClass}
+        {...register('label', { required: true })}
+      />
+      <button
+        type="submit"
+        disabled={schedule.isPending}
+        className="row-span-2 rounded-md border border-slate-300 px-2.5 text-xs font-semibold hover:bg-slate-100 disabled:opacity-50 dark:border-slate-700 dark:hover:bg-slate-800"
+      >
+        Schedule
+      </button>
+      <label className="sr-only" htmlFor={`action-due-${job.id}`}>
+        Due date for {job.title}
+      </label>
+      <input
+        id={`action-due-${job.id}`}
+        type="datetime-local"
+        title={`Leave blank to use the ${reminderDefaults?.reminder_default_days ?? 3}-day default`}
+        className={controlClass}
+        {...register('due_at')}
+      />
+    </form>
+  );
+};
 
 const PipelineJob = ({
   job,
@@ -240,6 +306,8 @@ const PipelineJob = ({
           </div>
         </details>
       </form>
+
+      <NextActionForm job={job} />
 
       {job.application_events?.length > 0 && (
         <details

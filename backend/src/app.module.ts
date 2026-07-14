@@ -7,6 +7,7 @@ import { JobsModule } from './modules/jobs/jobs.module';
 import { GapModule } from './modules/gap/gap.module';
 import { SettingsModule } from './modules/settings/settings.module';
 import { TelegramModule } from './modules/telegram/telegram.module';
+import { ApplicationsModule } from './modules/applications/applications.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { TelegramModule } from './modules/telegram/telegram.module';
     GapModule,
     SettingsModule,
     TelegramModule,
+    ApplicationsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
