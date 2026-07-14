@@ -86,6 +86,42 @@ export interface JobRequirement {
   job_description_excerpt: string | null;
   cv_evidence: string | null;
   evidence_inferred: boolean;
+  skill_id: string | null;
+  priority: 'REQUIRED' | 'PREFERRED';
+  gap_type: 'SKILL' | 'EVIDENCE' | 'TIME_BOUND' | 'ROLE_MISMATCH';
+  actionability: 'HIGH' | 'MEDIUM' | 'LOW';
+  effort: 'SMALL' | 'MEDIUM' | 'LARGE';
+}
+
+export interface SkillOccurrence {
+  job_id: string;
+  company_name: string;
+  title: string;
+  requirement_text: string;
+  excerpt: string | null;
+  cv_evidence: string | null;
+  met_status: MetStatus;
+}
+
+export interface SkillAggregate {
+  id: string;
+  name: string;
+  required_count: number;
+  preferred_count: number;
+  met_count: number;
+  gap_count: number;
+  gap_types: JobRequirement['gap_type'][];
+  actionability: JobRequirement['actionability'];
+  effort: JobRequirement['effort'];
+  supporting_jobs: SkillOccurrence[];
+  sort_reason: string;
+}
+
+export interface SkillMatrix {
+  sample_size: number;
+  raw_job_count: number;
+  skills: SkillAggregate[];
+  non_learnable_gaps: SkillOccurrence[];
 }
 
 export interface Job {

@@ -21,6 +21,7 @@ import { calculateScore, recommend } from './job-scoring';
 import { ApplicationStageEvent } from './entities/application-stage-event.entity';
 import { TransitionApplicationStageDto } from './dto/transition-application-stage.dto';
 import { ApplicationStage } from './enums/application-stage.enum';
+import { NormalizedRequirement, SkillsService } from '../skills/skills.service';
 
 export interface BulkJobsResult {
   succeeded: string[];
@@ -39,6 +40,7 @@ export class JobsService {
     private readonly llmService: LlmService,
     private readonly settingsService: SettingsService,
     private readonly dataSource: DataSource,
+    private readonly skillsService: SkillsService,
   ) {}
 
   async create(createJobDto: CreateJobDto): Promise<Job> {
@@ -135,6 +137,22 @@ export class JobsService {
           ? analysis.title || 'Unknown Title'
           : providedTitle;
 
+      const requirements: Array<{
+        req: (typeof analysis.requirements)[number];
+        index: number;
+        normalized: NormalizedRequirement;
+      }> = [];
+      for (const [index, req] of analysis.requirements.entries()) {
+        requirements.push({
+          req,
+          index,
+          normalized: await this.skillsService.normalizeRequirement(
+            req.name,
+            req.cv_evidence,
+          ),
+        });
+      }
+
       // Save job and requirements to DB
       Object.assign(job, {
         company_name,
@@ -151,7 +169,7 @@ export class JobsService {
         analysis_model: result.model,
         prompt_version: result.prompt_version,
         analyzed_at: result.analyzed_at,
-        requirements: analysis.requirements.map((req, index) =>
+        requirements: requirements.map(({ req, index, normalized }) =>
           this.requirementRepository.create({
             name: req.name,
             met_status: req.met_status,
@@ -160,6 +178,7 @@ export class JobsService {
             cv_evidence: req.cv_evidence,
             evidence_inferred: req.evidence_inferred,
             order: index,
+            ...normalized,
           }),
         ),
       });

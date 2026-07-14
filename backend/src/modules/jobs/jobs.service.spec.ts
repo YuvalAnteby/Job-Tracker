@@ -12,6 +12,7 @@ import { MetStatus } from './enums/met-status.enum';
 import { AnalysisStatus } from './enums/analysis-status.enum';
 import { ApplicationStageEvent } from './entities/application-stage-event.entity';
 import { ApplicationStage } from './enums/application-stage.enum';
+import { SkillsService } from '../skills/skills.service';
 
 describe('JobsService', () => {
   const job = {
@@ -49,6 +50,7 @@ describe('JobsService', () => {
       {} as LlmService,
       {} as SettingsService,
       {} as DataSource,
+      {} as SkillsService,
     );
     return { service, jobs, updateBuilder };
   };
@@ -159,6 +161,15 @@ describe('JobsService analysis persistence', () => {
       llm as unknown as LlmService,
       settings as unknown as SettingsService,
       {} as DataSource,
+      {
+        normalizeRequirement: jest.fn().mockResolvedValue({
+          skill_id: null,
+          priority: 'REQUIRED',
+          gap_type: 'SKILL',
+          actionability: 'HIGH',
+          effort: 'MEDIUM',
+        }),
+      } as unknown as SkillsService,
     );
 
     const result = await service.create({
@@ -219,6 +230,7 @@ describe('JobsService application pipeline', () => {
     {} as LlmService,
     {} as SettingsService,
     dataSource,
+    {} as SkillsService,
   );
 
   beforeEach(() => {

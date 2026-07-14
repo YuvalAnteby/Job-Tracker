@@ -7,12 +7,14 @@ import { JobsController } from './jobs.controller';
 import { LlmModule } from '../llm/llm.module';
 import { SettingsModule } from '../settings/settings.module';
 import { ApplicationStageEvent } from './entities/application-stage-event.entity';
+import { SkillsModule } from '../skills/skills.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Job, JobRequirement, ApplicationStageEvent]),
     LlmModule,
     SettingsModule,
+    SkillsModule,
   ],
   controllers: [JobsController],
   providers: [JobsService],
