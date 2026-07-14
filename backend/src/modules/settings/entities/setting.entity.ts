@@ -6,7 +6,7 @@ export class Setting {
   key: string;
 
   @Column('jsonb')
-  value: any;
+  value: unknown;
 
   @UpdateDateColumn({ type: 'timestamptz' })
   updated_at: Date;

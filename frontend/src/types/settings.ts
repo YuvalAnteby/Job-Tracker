@@ -19,12 +19,23 @@ export interface MasterCvVersionMetadata {
   character_count: number;
 }
 
-export interface MasterCv extends Omit<MasterCvVersionMetadata, 'updated_at' | 'source'> {
+export interface MasterCv extends Omit<
+  MasterCvVersionMetadata,
+  'updated_at' | 'source'
+> {
   content: string;
   updated_at: string | null;
   source: CvSource | null;
   revision: number;
   previous: MasterCvVersionMetadata | null;
+  ai_visible_content: string;
+  ai_visible_character_count: number;
+}
+
+export interface MasterCvRevision extends MasterCvVersionMetadata {
+  id: string;
+  revision: number;
+  ai_visible_character_count: number;
 }
 
 export interface MasterCvUpdate {
@@ -32,4 +43,17 @@ export interface MasterCvUpdate {
   source: Exclude<CvSource, 'legacy_url'>;
   filename?: string;
   expected_revision: number;
+}
+
+export interface TargetProfile {
+  target_domains: Domain[];
+  target_roles: string[];
+  must_have_skills: string[];
+  seniority?: string;
+  location?: string;
+}
+
+export interface TargetProfileState {
+  revision: number;
+  profile: TargetProfile;
 }

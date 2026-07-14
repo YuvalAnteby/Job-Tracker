@@ -103,7 +103,7 @@ export class TelegramService {
       domain = domainArg as Domain;
     }
 
-    this.gapService.generate(domain);
+    await this.gapService.generate({ domain_filter: domain });
     
     await ctx.reply(
       `⏳ Gap analysis enqueued${domain ? ` for <b>${domain}</b>` : ''}. I will notify you when it's ready.`,

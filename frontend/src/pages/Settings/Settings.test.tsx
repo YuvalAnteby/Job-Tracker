@@ -5,35 +5,69 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import Settings from './Settings';
 
 const saveMutate = vi.fn();
+const saveTargetMutate = vi.fn();
 const mockData = {
   cvQuery: {
-    data: { content: 'Saved CV', updated_at: '2026-01-01T00:00:00.000Z', source: 'manual', filename: null, word_count: 2, character_count: 8, revision: 3, previous: null },
-    isLoading: false, isError: false, refetch: vi.fn(),
+    data: {
+      content: 'Saved CV',
+      ai_visible_content: 'Saved CV',
+      ai_visible_character_count: 8,
+      updated_at: '2026-01-01T00:00:00.000Z',
+      source: 'manual',
+      filename: null,
+      word_count: 2,
+      character_count: 8,
+      revision: 3,
+      previous: null,
+    },
+    isLoading: false,
+    isError: false,
+    refetch: vi.fn(),
   },
+  cvHistoryQuery: { data: [], isLoading: false, isError: false },
   settingsQuery: {
-    data: { score_threshold: 70, llm_provider: 'gemini', llm_model: 'gemini-2.5-flash', applicable_domains: ['BACKEND'], domain_keywords: { BACKEND: ['api'] }, telegram_allowed_chat_ids: [] },
+    data: {
+      score_threshold: 70,
+      llm_provider: 'gemini',
+      llm_model: 'gemini-2.5-flash',
+      applicable_domains: ['BACKEND'],
+      domain_keywords: { BACKEND: ['api'] },
+      telegram_allowed_chat_ids: [],
+    },
+    isLoading: false,
+    isError: false,
+    refetch: vi.fn(),
+  },
+  targetProfileQuery: {
+    data: { revision: 2, profile: { target_domains: ['BACKEND'], target_roles: ['Engineer'], must_have_skills: ['TypeScript'] } },
     isLoading: false, isError: false, refetch: vi.fn(),
   },
   saveCv: { mutate: saveMutate, isPending: false },
   clearCv: { mutate: vi.fn(), isPending: false },
   restoreCv: { mutate: vi.fn(), isPending: false },
   updateSettings: { mutate: vi.fn(), isPending: false },
+  saveTargetProfile: { mutate: saveTargetMutate, isPending: false },
 };
 
 vi.mock('./useSettingsData', () => ({ useSettingsData: () => mockData }));
-vi.mock('react-hot-toast', () => ({ default: { success: vi.fn(), error: vi.fn() } }));
+vi.mock('react-hot-toast', () => ({
+  default: { success: vi.fn(), error: vi.fn() },
+}));
 
 function renderSettings() {
-  const router = createMemoryRouter([
-    { path: '/settings', element: <Settings /> },
-    { path: '/elsewhere', element: <div>Elsewhere</div> },
-  ], { initialEntries: ['/settings?section=cv'] });
+  const router = createMemoryRouter(
+    [
+      { path: '/settings', element: <Settings /> },
+      { path: '/elsewhere', element: <div>Elsewhere</div> },
+    ],
+    { initialEntries: ['/settings?section=cv'] },
+  );
   render(<RouterProvider router={router} />);
   return router;
 }
 
 describe('Settings master CV', () => {
-  beforeEach(() => saveMutate.mockReset());
+  beforeEach(() => { saveMutate.mockReset(); saveTargetMutate.mockReset(); });
 
   it('tracks manual edits, live counts, and serializes a save with the current revision', async () => {
     const user = userEvent.setup();
@@ -44,8 +78,16 @@ describe('Settings master CV', () => {
     expect(screen.getByText(/3 words/)).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Save CV' }));
     expect(saveMutate).toHaveBeenCalledWith(
-      { content: 'one two three', source: 'manual', filename: undefined, expected_revision: 3 },
-      expect.objectContaining({ onSuccess: expect.any(Function), onError: expect.any(Function) }),
+      {
+        content: 'one two three',
+        source: 'manual',
+        filename: undefined,
+        expected_revision: 3,
+      },
+      expect.objectContaining({
+        onSuccess: expect.any(Function),
+        onError: expect.any(Function),
+      }),
     );
   });
 
@@ -56,16 +98,45 @@ describe('Settings master CV', () => {
     await user.type(await screen.findByLabelText('CV text'), ' changed');
     await user.click(screen.getByRole('button', { name: /^Analysis/ }));
     await waitFor(() => expect(window.confirm).toHaveBeenCalled());
-    expect(screen.getByRole('heading', { name: 'Master CV' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Master CV' }),
+    ).toBeInTheDocument();
   });
 
   it('loads a valid local file into the unsaved draft and retains its filename', async () => {
     const user = userEvent.setup();
     renderSettings();
-    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
-    await user.upload(input, new File(['File content'], 'resume.TXT', { type: 'text/plain' }));
+    const input = document.querySelector(
+      'input[type="file"]',
+    ) as HTMLInputElement;
+    await user.upload(
+      input,
+      new File(['File content'], 'resume.TXT', { type: 'text/plain' }),
+    );
     expect(await screen.findByDisplayValue('File content')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Save CV' }));
-    expect(saveMutate).toHaveBeenCalledWith(expect.objectContaining({ source: 'file', filename: 'resume.TXT' }), expect.any(Object));
+    expect(saveMutate).toHaveBeenCalledWith(
+      expect.objectContaining({ source: 'file', filename: 'resume.TXT' }),
+      expect.any(Object),
+    );
+  });
+
+  it('saves the target profile against the loaded revision', async () => {
+    const user = userEvent.setup();
+    renderSettings();
+    await user.click(screen.getByRole('button', { name: /^Target Profile/ }));
+    const roles = await screen.findByLabelText('Target roles');
+    await user.clear(roles);
+    await user.type(roles, 'Backend Engineer, Platform Engineer');
+    await user.click(screen.getByRole('button', { name: 'Save target profile' }));
+    expect(saveTargetMutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        expected_revision: 2,
+        profile: expect.objectContaining({
+          target_roles: ['Backend Engineer', 'Platform Engineer'],
+        }),
+      }),
+      expect.any(Object),
+    );
   });
 });
