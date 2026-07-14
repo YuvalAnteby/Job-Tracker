@@ -10,6 +10,7 @@ import {
   X,
   Columns3,
   BookOpen,
+  ListChecks,
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { AddJobModal } from '../dashboard/AddJobModal';
@@ -27,6 +28,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     { name: 'Dashboard', href: '/', icon: LayoutDashboard },
     { name: 'Pipeline', href: '/pipeline', icon: Columns3 },
     { name: 'Skills', href: '/skills', icon: BookOpen },
+    { name: 'Roadmap', href: '/roadmap', icon: ListChecks },
     { name: 'Gap Summary', href: '/gap', icon: ShieldAlert },
     { name: 'Settings', href: '/settings', icon: Settings },
   ];

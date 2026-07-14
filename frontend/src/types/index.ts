@@ -101,6 +101,7 @@ export interface JobRequirement {
 }
 
 export interface SkillOccurrence {
+  requirement_id: string;
   job_id: string;
   company_name: string;
   title: string;
@@ -129,6 +130,75 @@ export interface SkillMatrix {
   raw_job_count: number;
   skills: SkillAggregate[];
   non_learnable_gaps: SkillOccurrence[];
+}
+
+export enum RoadmapStatus {
+  PLANNED = 'PLANNED',
+  IN_PROGRESS = 'IN_PROGRESS',
+  BLOCKED = 'BLOCKED',
+  COMPLETED = 'COMPLETED',
+}
+
+export interface RoadmapProofArtifact {
+  id: string;
+  title: string;
+  url: string | null;
+  repository_url: string | null;
+  notes: string | null;
+  resources: string | null;
+  promoted_at: string | null;
+}
+
+export interface RoadmapHistory {
+  id: string;
+  event: string;
+  details: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface RoadmapItem {
+  id: string;
+  title: string;
+  notes: string | null;
+  skill_id: string | null;
+  skill: { id: string; name: string } | null;
+  status: RoadmapStatus;
+  gap_type: JobRequirement['gap_type'];
+  target_date: string | null;
+  frequency: number;
+  importance: number;
+  relevance: number;
+  evidence_weakness: number;
+  effort: number;
+  recommended_priority: number;
+  priority_override: number | null;
+  effective_priority: number;
+  priority_reason: string;
+  target_profile_revision: number | null;
+  cv_evidence: string | null;
+  jobs: Pick<Job, 'id' | 'company_name' | 'title'>[];
+  requirements: JobRequirement[];
+  artifacts: RoadmapProofArtifact[];
+  history: RoadmapHistory[];
+  semester: string;
+  month: string | null;
+  overdue: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateRoadmapItem {
+  title: string;
+  skill_id?: string;
+  gap_type?: JobRequirement['gap_type'];
+  target_date?: string;
+  effort?: number;
+  relevance?: number;
+  priority_override?: number;
+  notes?: string;
+  job_ids?: string[];
+  requirement_ids?: string[];
+  confirm_non_learnable?: boolean;
 }
 
 export interface Job {

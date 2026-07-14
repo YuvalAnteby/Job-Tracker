@@ -8,6 +8,7 @@ import { GapModule } from './modules/gap/gap.module';
 import { SettingsModule } from './modules/settings/settings.module';
 import { TelegramModule } from './modules/telegram/telegram.module';
 import { SkillsModule } from './modules/skills/skills.module';
+import { RoadmapModule } from './modules/roadmap/roadmap.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { SkillsModule } from './modules/skills/skills.module';
     SettingsModule,
     TelegramModule,
     SkillsModule,
+    RoadmapModule,
   ],
   controllers: [AppController],
   providers: [AppService],

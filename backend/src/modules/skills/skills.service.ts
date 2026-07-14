@@ -26,6 +26,7 @@ export interface NormalizedRequirement {
 }
 
 interface SkillOccurrence {
+  requirement_id: string;
   job_id: string;
   company_name: string;
   title: string;
@@ -258,6 +259,7 @@ export class SkillsService {
 
   private occurrence(job: Job, requirement: JobRequirement): SkillOccurrence {
     return {
+      requirement_id: requirement.id,
       job_id: job.id,
       company_name: job.company_name,
       title: job.title,

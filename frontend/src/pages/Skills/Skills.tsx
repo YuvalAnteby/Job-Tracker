@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form';
 import { Link } from 'react-router-dom';
 import { Domain, type SkillAggregate } from '../../types';
 import { useSkillsData } from './useSkillsData';
+import { useCreateRoadmapItem } from '../Roadmap/useRoadmapData';
 
 interface AliasForm {
   alias: string;
@@ -13,7 +14,13 @@ interface AliasForm {
 const badgeClass =
   'rounded-full border border-gray-200 bg-gray-50 px-2 py-0.5 text-xs font-medium text-gray-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200';
 
-const SkillRow = ({ skill }: { skill: SkillAggregate }) => (
+interface SkillRowProps {
+  skill: SkillAggregate;
+  addToRoadmap: () => void;
+  adding: boolean;
+}
+
+const SkillRow = ({ skill, addToRoadmap, adding }: SkillRowProps) => (
   <details className="group border-b border-gray-200 last:border-b-0 dark:border-slate-800">
     <summary className="grid cursor-pointer list-none grid-cols-[minmax(9rem,1fr)_repeat(3,5rem)] items-center gap-3 px-4 py-3 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500 dark:hover:bg-slate-800/60 sm:grid-cols-[minmax(12rem,1fr)_repeat(4,6rem)]">
       <span className="font-semibold text-gray-950 dark:text-slate-50">
@@ -43,6 +50,14 @@ const SkillRow = ({ skill }: { skill: SkillAggregate }) => (
           </span>
         ))}
         <span className={badgeClass}>{skill.effort.toLowerCase()} effort</span>
+        <button
+          className="ml-auto rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:opacity-50"
+          disabled={adding}
+          onClick={addToRoadmap}
+          type="button"
+        >
+          Add to roadmap
+        </button>
       </div>
       <p className="mb-4 max-w-3xl text-xs text-gray-500 dark:text-slate-400">
         Ranked by {skill.sort_reason}.
@@ -87,6 +102,7 @@ const Skills = () => {
     includeResearch,
   );
   const { register, handleSubmit, reset } = useForm<AliasForm>();
+  const createRoadmapItem = useCreateRoadmapItem();
   const saveAlias = handleSubmit((values) => {
     alias.mutate(values, { onSuccess: () => reset() });
   });
@@ -192,7 +208,21 @@ const Skills = () => {
                 <span>Action</span>
               </div>
               {data.skills.map((skill) => (
-                <SkillRow key={skill.id} skill={skill} />
+                <SkillRow
+                  adding={createRoadmapItem.isPending}
+                  addToRoadmap={() =>
+                    createRoadmapItem.mutate({
+                      title: `Build proof for ${skill.name}`,
+                      skill_id: skill.id,
+                      job_ids: skill.supporting_jobs.map((job) => job.job_id),
+                      requirement_ids: skill.supporting_jobs.map(
+                        (job) => job.requirement_id,
+                      ),
+                    })
+                  }
+                  key={skill.id}
+                  skill={skill}
+                />
               ))}
             </section>
           ) : (
