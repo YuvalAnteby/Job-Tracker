@@ -1,15 +1,29 @@
 ﻿import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../api/client';
-import { Job, JobFilters, JobStatus } from '../types';
+import { JobStatus } from '../types';
+import type { BulkJobsResult, Job, JobFilters } from '../types';
 
+export const serializeJobFilters = (
+  filters: JobFilters,
+): Record<string, string> => {
+  const params: Record<string, string> = {};
+  if (filters.domains?.length) params.domains = filters.domains.join(',');
+  if (filters.statuses?.length) params.statuses = filters.statuses.join(',');
+  if (filters.fit && filters.fit !== 'all') params.fit = filters.fit;
+  if (filters.search?.trim()) params.search = filters.search.trim();
+  return params;
+};
 
 export const useJobs = (filters: JobFilters) => {
   return useQuery<Job[]>({
     queryKey: ['jobs', filters],
     queryFn: async () => {
-      const { data } = await apiClient.get('/jobs', { params: filters });
+      const { data } = await apiClient.get('/jobs', {
+        params: serializeJobFilters(filters),
+      });
       return data;
     },
+    placeholderData: (previous) => previous,
   });
 };
 
@@ -48,10 +62,7 @@ export const useUpdateJob = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({
-      id,
-      ...payload
-    }: Partial<Job> & { id: string }) => {
+    mutationFn: async ({ id, ...payload }: Partial<Job> & { id: string }) => {
       const { data } = await apiClient.patch(`/jobs/${id}`, payload);
       return data;
     },
@@ -98,6 +109,29 @@ export const useDeleteJob = () => {
   return useMutation({
     mutationFn: async (id: string) => {
       await apiClient.delete(`/jobs/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['jobs'] });
+    },
+  });
+};
+
+export const useBulkJobs = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    BulkJobsResult,
+    Error,
+    { ids: string[]; status?: JobStatus.APPLIED | JobStatus.INACTIVE }
+  >({
+    mutationFn: async ({ ids, status }) => {
+      const response = status
+        ? await apiClient.patch<BulkJobsResult>('/jobs/bulk/status', {
+            ids,
+            status,
+          })
+        : await apiClient.delete<BulkJobsResult>('/jobs', { data: { ids } });
+      return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['jobs'] });

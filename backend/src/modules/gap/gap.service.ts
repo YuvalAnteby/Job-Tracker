@@ -45,7 +45,9 @@ export class GapService {
       const queryBuilder = this.jobRepository
         .createQueryBuilder('job')
         .leftJoinAndSelect('job.requirements', 'requirement')
-        .where('job.status = :status', { status: JobStatus.ACTIVE });
+        .where('job.status IN (:...statuses)', {
+          statuses: [JobStatus.ACTIVE, JobStatus.APPLIED],
+        });
 
       if (domainFilter) {
         queryBuilder.andWhere(
@@ -57,7 +59,7 @@ export class GapService {
       const jobs = await queryBuilder.getMany();
 
       if (jobs.length === 0) {
-        this.logger.warn('No active jobs found for gap analysis.');
+        this.logger.warn('No active or applied jobs found for gap analysis.');
         return;
       }
 
@@ -127,7 +129,7 @@ export class GapService {
       if (data.partially_known?.length > 0) {
         message += `🟡 <b>Partial:</b> ${data.partially_known.join(', ')}\n`;
       }
-      
+
       message += `\n`;
     });
 

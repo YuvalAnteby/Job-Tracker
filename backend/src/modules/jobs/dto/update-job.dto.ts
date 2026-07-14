@@ -41,9 +41,4 @@ export class UpdateJobDto extends PartialType(CreateJobDto) {
   @IsString()
   @IsOptional()
   notes?: string;
-
-  @ApiProperty({ required: false })
-  @IsString()
-  @IsOptional()
-  applied_at?: string;
 }
