@@ -1,7 +1,13 @@
 ﻿import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../api/client';
 import { ApplicationStage, JobStatus } from '../types';
-import type { BulkJobsResult, Job, JobFilters } from '../types';
+import type {
+  AnalysisRevision,
+  BulkJobsResult,
+  Job,
+  JobFilters,
+  ReanalysisResult,
+} from '../types';
 
 export const serializeJobFilters = (
   filters: JobFilters,
@@ -80,16 +86,31 @@ export const useReanalyzeJob = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (id: string) => {
-      const { data } = await apiClient.post(`/jobs/${id}/analyze`);
+    mutationFn: async (id: string): Promise<ReanalysisResult> => {
+      const { data } = await apiClient.post<ReanalysisResult>(
+        '/jobs/reanalyze',
+        { ids: [id] },
+      );
       return data;
     },
     onSuccess: (_, id) => {
       queryClient.invalidateQueries({ queryKey: ['jobs'] });
       queryClient.invalidateQueries({ queryKey: ['jobs', id] });
+      queryClient.invalidateQueries({
+        queryKey: ['jobs', id, 'analysis-history'],
+      });
     },
   });
 };
+
+export const useAnalysisHistory = (id: string) =>
+  useQuery<AnalysisRevision[]>({
+    queryKey: ['jobs', id, 'analysis-history'],
+    queryFn: async () =>
+      (await apiClient.get<AnalysisRevision[]>(`/jobs/${id}/analysis-history`))
+        .data,
+    enabled: Boolean(id),
+  });
 
 export const useUpdateJobStatus = () => {
   const queryClient = useQueryClient();

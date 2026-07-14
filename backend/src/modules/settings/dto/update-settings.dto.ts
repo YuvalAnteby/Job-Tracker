@@ -1,5 +1,6 @@
 import {
   IsArray,
+  IsBoolean,
   IsEnum,
   IsInt,
   IsObject,
@@ -38,4 +39,19 @@ export class UpdateSettingsDto {
   @IsArray()
   @IsInt({ each: true })
   telegram_allowed_chat_ids?: number[];
+
+  @IsOptional()
+  @IsBoolean()
+  reminders_enabled?: boolean;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(365)
+  reminder_default_days?: number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  reminder_timezone?: string;
 }

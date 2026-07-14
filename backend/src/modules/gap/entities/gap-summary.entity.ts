@@ -57,4 +57,13 @@ export class GapSummary {
 
   @Column({ type: 'timestamptz', nullable: true })
   analyzed_at: Date | null;
+
+  @Column('uuid', { nullable: true })
+  cv_revision_id: string | null;
+
+  @Column('int', { nullable: true })
+  cv_revision: number | null;
+
+  @Column('jsonb', { default: () => "'[]'::jsonb" })
+  analysis_revision_ids: string[];
 }

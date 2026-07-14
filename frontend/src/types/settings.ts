@@ -7,6 +7,9 @@ export interface Settings {
   llm_provider: 'gemini';
   llm_model: string;
   telegram_allowed_chat_ids: number[];
+  reminders_enabled: boolean;
+  reminder_default_days: number;
+  reminder_timezone: string;
 }
 
 export type CvSource = 'manual' | 'file' | 'legacy_url';
@@ -19,12 +22,23 @@ export interface MasterCvVersionMetadata {
   character_count: number;
 }
 
-export interface MasterCv extends Omit<MasterCvVersionMetadata, 'updated_at' | 'source'> {
+export interface MasterCv extends Omit<
+  MasterCvVersionMetadata,
+  'updated_at' | 'source'
+> {
   content: string;
   updated_at: string | null;
   source: CvSource | null;
   revision: number;
   previous: MasterCvVersionMetadata | null;
+  ai_visible_content: string;
+  ai_visible_character_count: number;
+}
+
+export interface MasterCvRevision extends MasterCvVersionMetadata {
+  id: string;
+  revision: number;
+  ai_visible_character_count: number;
 }
 
 export interface MasterCvUpdate {

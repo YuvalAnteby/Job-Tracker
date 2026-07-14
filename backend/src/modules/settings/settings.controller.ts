@@ -17,7 +17,9 @@ export class SettingsController {
   }
 
   @Patch()
-  @ApiOperation({ summary: 'Transactionally update public application settings' })
+  @ApiOperation({
+    summary: 'Transactionally update public application settings',
+  })
   update(@Body() settings: UpdateSettingsDto) {
     return this.settingsService.updateSettings(settings);
   }
@@ -45,6 +47,12 @@ export class SettingsController {
     return this.settingsService.getMasterCv();
   }
 
+  @Get('master-cv/history')
+  @ApiOperation({ summary: 'List immutable master CV revision metadata' })
+  getMasterCvHistory(): Promise<Record<string, unknown>[]> {
+    return this.settingsService.getMasterCvHistory();
+  }
+
   @Put('master-cv')
   @ApiOperation({ summary: 'Save the editable master CV' })
   updateMasterCv(@Body() input: UpdateMasterCvDto) {
@@ -52,7 +60,9 @@ export class SettingsController {
   }
 
   @Post('master-cv/clear')
-  @ApiOperation({ summary: 'Clear the master CV while retaining one previous version' })
+  @ApiOperation({
+    summary: 'Clear the master CV while retaining one previous version',
+  })
   clearMasterCv(@Body() input: MasterCvRevisionDto) {
     return this.settingsService.clearMasterCv(input.expected_revision);
   }
@@ -65,7 +75,10 @@ export class SettingsController {
 
   @Post('cv/refresh')
   @ApiOperation({ summary: 'Deprecated: import the configured master CV URL' })
-  @ApiResponse({ status: 200, description: 'CV imported into the editable master CV.' })
+  @ApiResponse({
+    status: 200,
+    description: 'CV imported into the editable master CV.',
+  })
   refreshCv() {
     return this.settingsService.refreshCv();
   }

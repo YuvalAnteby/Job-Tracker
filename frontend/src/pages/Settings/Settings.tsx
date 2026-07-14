@@ -4,6 +4,7 @@ import {
   Bell,
   Bot,
   Check,
+  Clock,
   FileText,
   FolderOpen,
   RotateCcw,
@@ -22,31 +23,84 @@ import type {
   TargetProfile,
 } from '../../types/settings';
 import { cn } from '../../utils/cn';
-import { countCvWords, decodeCvFile, MASTER_CV_MAX_BYTES } from './cvFile';
+import {
+  aiVisibleCv,
+  countCvWords,
+  decodeCvFile,
+  MASTER_CV_MAX_BYTES,
+} from './cvFile';
 import { useSettingsData } from './useSettingsData';
 
-type Section = 'cv' | 'target' | 'analysis' | 'domains' | 'integrations';
-const sections: { id: Section; label: string; description: string; icon: typeof FileText }[] = [
-  { id: 'cv', label: 'Master CV', description: 'Analysis baseline', icon: FileText },
-  { id: 'target', label: 'Target Profile', description: 'Search direction', icon: Target },
-  { id: 'analysis', label: 'Analysis', description: 'Scoring and model', icon: Bot },
-  { id: 'domains', label: 'Target Domains', description: 'Classification rules', icon: Target },
-  { id: 'integrations', label: 'Integrations', description: 'Telegram access', icon: Bell },
+type Section =
+  'cv' | 'target' | 'analysis' | 'domains' | 'reminders' | 'integrations';
+const sections: {
+  id: Section;
+  label: string;
+  description: string;
+  icon: typeof FileText;
+}[] = [
+  {
+    id: 'reminders',
+    label: 'Reminders',
+    description: 'Follow-up defaults',
+    icon: Clock,
+  },
+  {
+    id: 'target',
+    label: 'Target Profile',
+    description: 'Search direction',
+    icon: Target,
+  },
+  {
+    id: 'cv',
+    label: 'Master CV',
+    description: 'Analysis baseline',
+    icon: FileText,
+  },
+  {
+    id: 'analysis',
+    label: 'Analysis',
+    description: 'Scoring and model',
+    icon: Bot,
+  },
+  {
+    id: 'domains',
+    label: 'Target Domains',
+    description: 'Classification rules',
+    icon: Target,
+  },
+  {
+    id: 'integrations',
+    label: 'Integrations',
+    description: 'Telegram access',
+    icon: Bell,
+  },
 ];
 
-const inputClass = 'w-full rounded-md border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-950 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100';
-const primaryButton = 'inline-flex items-center justify-center gap-2 rounded-md bg-blue-600 px-3.5 py-2 text-sm font-semibold text-slate-50 transition hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40 disabled:cursor-not-allowed disabled:opacity-50';
-const secondaryButton = 'inline-flex items-center justify-center gap-2 rounded-md border border-slate-300 bg-slate-50 px-3.5 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50';
+const inputClass =
+  'w-full rounded-md border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-950 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100';
+const primaryButton =
+  'inline-flex items-center justify-center gap-2 rounded-md bg-blue-600 px-3.5 py-2 text-sm font-semibold text-slate-50 transition hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40 disabled:cursor-not-allowed disabled:opacity-50';
+const secondaryButton =
+  'inline-flex items-center justify-center gap-2 rounded-md border border-slate-300 bg-slate-50 px-3.5 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50';
 
-interface ApiError { response?: { status?: number }; message?: string }
+interface ApiError {
+  response?: { status?: number };
+  message?: string;
+}
 
 export default function Settings() {
   const [params, setParams] = useSearchParams();
   const rawSection = params.get('section');
-  const section: Section = sections.some((item) => item.id === rawSection) ? rawSection as Section : 'cv';
+  const section: Section = sections.some((item) => item.id === rawSection)
+    ? (rawSection as Section)
+    : 'cv';
   const [cvDirty, setCvDirty] = useState(false);
-  const blocker = useBlocker(({ currentLocation, nextLocation }) =>
-    cvDirty && currentLocation.pathname + currentLocation.search !== nextLocation.pathname + nextLocation.search,
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      cvDirty &&
+      currentLocation.pathname + currentLocation.search !==
+        nextLocation.pathname + nextLocation.search,
   );
 
   useEffect(() => {
@@ -61,11 +115,18 @@ export default function Settings() {
   return (
     <div className="mx-auto w-full max-w-6xl">
       <header className="mb-7 border-b border-slate-200 pb-5 dark:border-slate-800">
-        <p className="mb-1 text-xs font-semibold uppercase tracking-[0.14em] text-blue-600 dark:text-blue-400">Control center</p>
-        <h1 className="text-2xl font-bold tracking-tight text-slate-950 dark:text-slate-100">Settings</h1>
+        <p className="mb-1 text-xs font-semibold uppercase tracking-[0.14em] text-blue-600 dark:text-blue-400">
+          Control center
+        </p>
+        <h1 className="text-2xl font-bold tracking-tight text-slate-950 dark:text-slate-100">
+          Settings
+        </h1>
       </header>
       <div className="grid gap-8 lg:grid-cols-[220px_minmax(0,1fr)]">
-        <nav aria-label="Settings sections" className="grid grid-cols-2 gap-1 sm:grid-cols-4 lg:block lg:space-y-1">
+        <nav
+          aria-label="Settings sections"
+          className="grid grid-cols-2 gap-1 sm:grid-cols-4 lg:block lg:space-y-1"
+        >
           {sections.map((item) => {
             const active = item.id === section;
             return (
@@ -81,10 +142,19 @@ export default function Settings() {
                 )}
                 aria-current={active ? 'page' : undefined}
               >
-                <item.icon className={cn('h-4 w-4 shrink-0', active && 'text-blue-600 dark:text-blue-400')} />
+                <item.icon
+                  className={cn(
+                    'h-4 w-4 shrink-0',
+                    active && 'text-blue-600 dark:text-blue-400',
+                  )}
+                />
                 <span>
-                  <span className="block text-sm font-medium">{item.label}</span>
-                  <span className="hidden text-xs font-normal text-slate-500 lg:block">{item.description}</span>
+                  <span className="block text-sm font-medium">
+                    {item.label}
+                  </span>
+                  <span className="hidden text-xs font-normal text-slate-500 lg:block">
+                    {item.description}
+                  </span>
                 </span>
               </button>
             );
@@ -95,6 +165,7 @@ export default function Settings() {
           {section === 'target' && <TargetProfileSection />}
           {section === 'analysis' && <AnalysisSection />}
           {section === 'domains' && <DomainsSection />}
+          {section === 'reminders' && <RemindersSection />}
           {section === 'integrations' && <IntegrationsSection />}
         </main>
       </div>
@@ -138,7 +209,10 @@ function TargetProfileSection(): React.JSX.Element {
     return <ErrorState retry={() => void targetProfileQuery.refetch()} />;
   const domains = watch('target_domains');
   const split = (value: string) =>
-    value.split(',').map((item) => item.trim()).filter(Boolean);
+    value
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean);
   const submit = (form: TargetProfileForm) => {
     const profile: TargetProfile = {
       ...form,
@@ -170,34 +244,163 @@ function TargetProfileSection(): React.JSX.Element {
       },
     );
   };
-  return <section><SectionHeader title="Target Profile" description="Define the roles used to interpret recommendations and record the profile revision behind every gap cohort." /><form className="max-w-2xl space-y-5" onSubmit={handleSubmit(submit)}>
-    <div><span className="mb-2 block text-sm font-medium">Target domains</span><div className="flex flex-wrap gap-2">{Object.values(Domain).map((domain) => <button key={domain} type="button" onClick={() => setValue('target_domains', domains.includes(domain) ? domains.filter((item) => item !== domain) : [...domains, domain], { shouldDirty: true })} className={cn('rounded-md border px-3 py-1.5 text-xs font-semibold', domains.includes(domain) ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-300 dark:border-slate-700')}>{domain}</button>)}</div></div>
-    <div><label htmlFor="target-roles" className="mb-2 block text-sm font-medium">Target roles</label><input id="target-roles" className={inputClass} {...register('target_roles')} placeholder="Backend Engineer, Platform Engineer" /><p className="mt-1 text-xs text-slate-500">Comma-separated.</p></div>
-    <div><label htmlFor="target-skills" className="mb-2 block text-sm font-medium">Must-have skills</label><input id="target-skills" className={inputClass} {...register('must_have_skills')} placeholder="TypeScript, PostgreSQL" /></div>
-    <div className="grid gap-4 sm:grid-cols-2"><div><label htmlFor="target-seniority" className="mb-2 block text-sm font-medium">Seniority</label><input id="target-seniority" className={inputClass} {...register('seniority')} /></div><div><label htmlFor="target-location" className="mb-2 block text-sm font-medium">Location</label><input id="target-location" className={inputClass} {...register('location')} /></div></div>
-    <div className="border-t border-slate-200 pt-4 dark:border-slate-800"><button className={primaryButton} disabled={!formState.isDirty || saveTargetProfile.isPending} type="submit"><Save className="h-4 w-4" />Save target profile</button><span className="ml-3 text-xs text-slate-500">Revision {targetProfileQuery.data.revision}</span></div>
-  </form></section>;
+  return (
+    <section>
+      <SectionHeader
+        title="Target Profile"
+        description="Define the roles used to interpret recommendations and record the profile revision behind every gap cohort."
+      />
+      <form className="max-w-2xl space-y-5" onSubmit={handleSubmit(submit)}>
+        <div>
+          <span className="mb-2 block text-sm font-medium">Target domains</span>
+          <div className="flex flex-wrap gap-2">
+            {Object.values(Domain).map((domain) => (
+              <button
+                key={domain}
+                type="button"
+                onClick={() =>
+                  setValue(
+                    'target_domains',
+                    domains.includes(domain)
+                      ? domains.filter((item) => item !== domain)
+                      : [...domains, domain],
+                    { shouldDirty: true },
+                  )
+                }
+                className={cn(
+                  'rounded-md border px-3 py-1.5 text-xs font-semibold',
+                  domains.includes(domain)
+                    ? 'border-blue-600 bg-blue-600 text-white'
+                    : 'border-slate-300 dark:border-slate-700',
+                )}
+              >
+                {domain}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <label
+            htmlFor="target-roles"
+            className="mb-2 block text-sm font-medium"
+          >
+            Target roles
+          </label>
+          <input
+            id="target-roles"
+            className={inputClass}
+            {...register('target_roles')}
+            placeholder="Backend Engineer, Platform Engineer"
+          />
+          <p className="mt-1 text-xs text-slate-500">Comma-separated.</p>
+        </div>
+        <div>
+          <label
+            htmlFor="target-skills"
+            className="mb-2 block text-sm font-medium"
+          >
+            Must-have skills
+          </label>
+          <input
+            id="target-skills"
+            className={inputClass}
+            {...register('must_have_skills')}
+            placeholder="TypeScript, PostgreSQL"
+          />
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label
+              htmlFor="target-seniority"
+              className="mb-2 block text-sm font-medium"
+            >
+              Seniority
+            </label>
+            <input
+              id="target-seniority"
+              className={inputClass}
+              {...register('seniority')}
+            />
+          </div>
+          <div>
+            <label
+              htmlFor="target-location"
+              className="mb-2 block text-sm font-medium"
+            >
+              Location
+            </label>
+            <input
+              id="target-location"
+              className={inputClass}
+              {...register('location')}
+            />
+          </div>
+        </div>
+        <div className="border-t border-slate-200 pt-4 dark:border-slate-800">
+          <button
+            className={primaryButton}
+            disabled={!formState.isDirty || saveTargetProfile.isPending}
+            type="submit"
+          >
+            <Save className="h-4 w-4" />
+            Save target profile
+          </button>
+          <span className="ml-3 text-xs text-slate-500">
+            Revision {targetProfileQuery.data.revision}
+          </span>
+        </div>
+      </form>
+    </section>
+  );
 }
 
-function SectionHeader({ title, description }: { title: string; description: string }) {
+function SectionHeader({
+  title,
+  description,
+}: {
+  title: string;
+  description: string;
+}) {
   return (
     <div className="mb-6">
-      <h2 className="text-lg font-semibold text-slate-950 dark:text-slate-100">{title}</h2>
-      <p className="mt-1 max-w-2xl text-sm text-slate-500 dark:text-slate-400">{description}</p>
+      <h2 className="text-lg font-semibold text-slate-950 dark:text-slate-100">
+        {title}
+      </h2>
+      <p className="mt-1 max-w-2xl text-sm text-slate-500 dark:text-slate-400">
+        {description}
+      </p>
     </div>
   );
 }
 
 function LoadingState() {
-  return <div className="space-y-4" aria-label="Loading settings"><div className="h-10 animate-pulse rounded-md bg-slate-200 dark:bg-slate-800" /><div className="h-64 animate-pulse rounded-md bg-slate-200 dark:bg-slate-800" /></div>;
+  return (
+    <div className="space-y-4" aria-label="Loading settings">
+      <div className="h-10 animate-pulse rounded-md bg-slate-200 dark:bg-slate-800" />
+      <div className="h-64 animate-pulse rounded-md bg-slate-200 dark:bg-slate-800" />
+    </div>
+  );
 }
 
 function ErrorState({ retry }: { retry: () => void }) {
-  return <div className="rounded-md border border-red-300 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">Settings could not be loaded. <button className="font-semibold underline" onClick={retry}>Try again</button>.</div>;
+  return (
+    <div className="rounded-md border border-red-300 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">
+      Settings could not be loaded.{' '}
+      <button className="font-semibold underline" onClick={retry}>
+        Try again
+      </button>
+      .
+    </div>
+  );
 }
 
-function MasterCvSection({ onDirtyChange }: { onDirtyChange: (dirty: boolean) => void }) {
-  const { cvQuery, saveCv, clearCv, restoreCv } = useSettingsData();
+function MasterCvSection({
+  onDirtyChange,
+}: {
+  onDirtyChange: (dirty: boolean) => void;
+}) {
+  const { cvQuery, cvHistoryQuery, saveCv, clearCv, restoreCv } =
+    useSettingsData();
   const [draft, setDraft] = useState('');
   const [source, setSource] = useState<'manual' | 'file'>('manual');
   const [filename, setFilename] = useState<string | undefined>();
@@ -212,8 +415,22 @@ function MasterCvSection({ onDirtyChange }: { onDirtyChange: (dirty: boolean) =>
     setFilename(cvQuery.data.filename ?? undefined);
   }, [cvQuery.data, dirty]);
 
-  const byteCount = useMemo(() => new TextEncoder().encode(draft).length, [draft]);
+  const byteCount = useMemo(
+    () => new TextEncoder().encode(draft).length,
+    [draft],
+  );
   const wordCount = useMemo(() => countCvWords(draft), [draft]);
+  const preview = useMemo(() => {
+    try {
+      return { text: aiVisibleCv(draft), error: null };
+    } catch (error) {
+      return {
+        text: '',
+        error:
+          error instanceof Error ? error.message : 'Invalid exclusion markers.',
+      };
+    }
+  }, [draft]);
   const updateFromResponse = (cv: MasterCv) => {
     setDraft(cv.content);
     setSource(cv.source === 'file' ? 'file' : 'manual');
@@ -223,7 +440,9 @@ function MasterCvSection({ onDirtyChange }: { onDirtyChange: (dirty: boolean) =>
   const handleMutationError = async (error: ApiError) => {
     if (error.response?.status === 409) {
       await cvQuery.refetch();
-      toast.error('The CV changed elsewhere. The latest revision is loaded; your draft is preserved.');
+      toast.error(
+        'The CV changed elsewhere. The latest revision is loaded; your draft is preserved.',
+      );
     } else toast.error(error.message || 'The CV could not be updated.');
   };
   const loadFile = async (file?: File) => {
@@ -236,7 +455,9 @@ function MasterCvSection({ onDirtyChange }: { onDirtyChange: (dirty: boolean) =>
       setDirty(true);
       toast.success(`${decoded.filename} loaded into the editor`);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'The file could not be read.');
+      toast.error(
+        error instanceof Error ? error.message : 'The file could not be read.',
+      );
     } finally {
       if (fileInput.current) fileInput.current.value = '';
     }
@@ -247,18 +468,44 @@ function MasterCvSection({ onDirtyChange }: { onDirtyChange: (dirty: boolean) =>
   };
 
   if (cvQuery.isLoading) return <LoadingState />;
-  if (cvQuery.isError || !cvQuery.data) return <ErrorState retry={() => void cvQuery.refetch()} />;
+  if (cvQuery.isError || !cvQuery.data)
+    return <ErrorState retry={() => void cvQuery.refetch()} />;
   const cv = cvQuery.data;
   const busy = saveCv.isPending || clearCv.isPending || restoreCv.isPending;
 
   return (
     <section>
-      <SectionHeader title="Master CV" description="This text is the authoritative baseline used for every future job analysis." />
+      <SectionHeader
+        title="Master CV"
+        description="This text is the authoritative baseline used for every future job analysis."
+      />
       <div className="mb-5 flex flex-wrap items-center gap-x-5 gap-y-2 border-y border-slate-200 py-3 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
-        <span><strong className="font-semibold text-slate-700 dark:text-slate-200">Status:</strong> {cv.updated_at ? 'Ready' : 'Not configured'}</span>
-        <span><strong className="font-semibold text-slate-700 dark:text-slate-200">Revision:</strong> {cv.revision}</span>
-        <span><strong className="font-semibold text-slate-700 dark:text-slate-200">Updated:</strong> {cv.updated_at ? new Date(cv.updated_at).toLocaleString() : 'Never'}</span>
-        {cv.filename && <span><strong className="font-semibold text-slate-700 dark:text-slate-200">File:</strong> {cv.filename}</span>}
+        <span>
+          <strong className="font-semibold text-slate-700 dark:text-slate-200">
+            Status:
+          </strong>{' '}
+          {cv.updated_at ? 'Ready' : 'Not configured'}
+        </span>
+        <span>
+          <strong className="font-semibold text-slate-700 dark:text-slate-200">
+            Revision:
+          </strong>{' '}
+          {cv.revision}
+        </span>
+        <span>
+          <strong className="font-semibold text-slate-700 dark:text-slate-200">
+            Updated:
+          </strong>{' '}
+          {cv.updated_at ? new Date(cv.updated_at).toLocaleString() : 'Never'}
+        </span>
+        {cv.filename && (
+          <span>
+            <strong className="font-semibold text-slate-700 dark:text-slate-200">
+              File:
+            </strong>{' '}
+            {cv.filename}
+          </span>
+        )}
       </div>
 
       <div
@@ -267,13 +514,35 @@ function MasterCvSection({ onDirtyChange }: { onDirtyChange: (dirty: boolean) =>
         className="mb-4 flex flex-col items-center justify-center rounded-md border border-dashed border-slate-300 bg-slate-100/60 px-4 py-5 text-center dark:border-slate-700 dark:bg-slate-900/60"
       >
         <Upload className="mb-2 h-5 w-5 text-slate-400" />
-        <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Drop a Markdown or text file here</p>
-        <p className="mt-1 text-xs text-slate-500">UTF-8, up to 1 MiB. The file stays in your browser until you save.</p>
-        <input ref={fileInput} type="file" accept=".md,.txt,text/plain,text/markdown" className="sr-only" onChange={(event) => void loadFile(event.target.files?.[0])} />
-        <button type="button" className={cn(secondaryButton, 'mt-3')} onClick={() => fileInput.current?.click()}><FolderOpen className="h-4 w-4" />Browse file</button>
+        <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
+          Drop a Markdown or text file here
+        </p>
+        <p className="mt-1 text-xs text-slate-500">
+          UTF-8, up to 1 MiB. The file stays in your browser until you save.
+        </p>
+        <input
+          ref={fileInput}
+          type="file"
+          accept=".md,.txt,text/plain,text/markdown"
+          className="sr-only"
+          onChange={(event) => void loadFile(event.target.files?.[0])}
+        />
+        <button
+          type="button"
+          className={cn(secondaryButton, 'mt-3')}
+          onClick={() => fileInput.current?.click()}
+        >
+          <FolderOpen className="h-4 w-4" />
+          Browse file
+        </button>
       </div>
 
-      <label htmlFor="master-cv-editor" className="mb-2 block text-sm font-medium text-slate-800 dark:text-slate-200">CV text</label>
+      <label
+        htmlFor="master-cv-editor"
+        className="mb-2 block text-sm font-medium text-slate-800 dark:text-slate-200"
+      >
+        CV text
+      </label>
       <textarea
         id="master-cv-editor"
         value={draft}
@@ -288,41 +557,175 @@ function MasterCvSection({ onDirtyChange }: { onDirtyChange: (dirty: boolean) =>
         spellCheck
       />
       <div className="mt-2 flex flex-wrap justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
-        <span>{wordCount.toLocaleString()} words · {draft.length.toLocaleString()} characters</span>
-        <span className={cn(byteCount > MASTER_CV_MAX_BYTES && 'font-semibold text-red-600 dark:text-red-400')}>{byteCount.toLocaleString()} / {MASTER_CV_MAX_BYTES.toLocaleString()} bytes</span>
+        <span>
+          {wordCount.toLocaleString()} words · {draft.length.toLocaleString()}{' '}
+          characters
+        </span>
+        <span
+          className={cn(
+            byteCount > MASTER_CV_MAX_BYTES &&
+              'font-semibold text-red-600 dark:text-red-400',
+          )}
+        >
+          {byteCount.toLocaleString()} / {MASTER_CV_MAX_BYTES.toLocaleString()}{' '}
+          bytes
+        </span>
       </div>
 
       <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-slate-200 pt-4 dark:border-slate-800">
         <button
           type="button"
           className={primaryButton}
-          disabled={!dirty || !draft.trim() || byteCount > MASTER_CV_MAX_BYTES || busy}
-          onClick={() => saveCv.mutate({ content: draft, source, filename, expected_revision: cv.revision }, { onSuccess: (result) => { updateFromResponse(result); toast.success('Master CV saved'); }, onError: handleMutationError })}
-        ><Save className="h-4 w-4" />{saveCv.isPending ? 'Saving…' : 'Save CV'}</button>
-        <button type="button" className={secondaryButton} disabled={!dirty || busy} onClick={() => {
-          if (!window.confirm('Discard your unsaved CV changes?')) return;
-          updateFromResponse(cv);
-        }}><RotateCcw className="h-4 w-4" />Reset draft</button>
+          disabled={
+            !dirty ||
+            !draft.trim() ||
+            byteCount > MASTER_CV_MAX_BYTES ||
+            Boolean(preview.error) ||
+            busy
+          }
+          onClick={() =>
+            saveCv.mutate(
+              {
+                content: draft,
+                source,
+                filename,
+                expected_revision: cv.revision,
+              },
+              {
+                onSuccess: (result) => {
+                  updateFromResponse(result);
+                  toast.success('Master CV saved');
+                },
+                onError: handleMutationError,
+              },
+            )
+          }
+        >
+          <Save className="h-4 w-4" />
+          {saveCv.isPending ? 'Saving…' : 'Save CV'}
+        </button>
+        <button
+          type="button"
+          className={secondaryButton}
+          disabled={!dirty || busy}
+          onClick={() => {
+            if (!window.confirm('Discard your unsaved CV changes?')) return;
+            updateFromResponse(cv);
+          }}
+        >
+          <RotateCcw className="h-4 w-4" />
+          Reset draft
+        </button>
         <button
           type="button"
           className={secondaryButton}
           disabled={!cv.previous || busy}
           onClick={() => {
-            if (!window.confirm('Restore the previous CV version? The current version will remain available as the next restore.')) return;
-            restoreCv.mutate(cv.revision, { onSuccess: (result) => { updateFromResponse(result); toast.success('Previous CV restored'); }, onError: handleMutationError });
+            if (
+              !window.confirm(
+                'Restore the previous CV version? The current version will remain available as the next restore.',
+              )
+            )
+              return;
+            restoreCv.mutate(cv.revision, {
+              onSuccess: (result) => {
+                updateFromResponse(result);
+                toast.success('Previous CV restored');
+              },
+              onError: handleMutationError,
+            });
           }}
-        ><RotateCcw className="h-4 w-4" />Restore previous</button>
+        >
+          <RotateCcw className="h-4 w-4" />
+          Restore previous
+        </button>
         <button
           type="button"
-          className={cn(secondaryButton, 'sm:ml-auto hover:border-red-400 hover:text-red-600 dark:hover:text-red-400')}
+          className={cn(
+            secondaryButton,
+            'sm:ml-auto hover:border-red-400 hover:text-red-600 dark:hover:text-red-400',
+          )}
           disabled={!cv.content || busy}
           onClick={() => {
-            if (!window.confirm('Clear the saved master CV? You can restore it once from the previous version.')) return;
-            clearCv.mutate(cv.revision, { onSuccess: (result) => { updateFromResponse(result); toast.success('Master CV cleared'); }, onError: handleMutationError });
+            if (
+              !window.confirm(
+                'Clear the saved master CV? You can restore it once from the previous version.',
+              )
+            )
+              return;
+            clearCv.mutate(cv.revision, {
+              onSuccess: (result) => {
+                updateFromResponse(result);
+                toast.success('Master CV cleared');
+              },
+              onError: handleMutationError,
+            });
           }}
-        ><Trash2 className="h-4 w-4" />Clear</button>
+        >
+          <Trash2 className="h-4 w-4" />
+          Clear
+        </button>
       </div>
-      {cv.previous && <p className="mt-3 text-xs text-slate-500">Previous version: {cv.previous.word_count.toLocaleString()} words, saved {new Date(cv.previous.updated_at).toLocaleString()}.</p>}
+      <details className="mt-5 border-y border-slate-200 py-4 dark:border-slate-800">
+        <summary className="cursor-pointer text-sm font-semibold text-slate-800 dark:text-slate-200">
+          Exact text visible to AI
+        </summary>
+        <p className="mt-2 text-xs text-slate-500">
+          Wrap private text with{' '}
+          <code className="font-mono">&lt;!-- AI-EXCLUDE-START --&gt;</code> and{' '}
+          <code className="font-mono">&lt;!-- AI-EXCLUDE-END --&gt;</code>.
+          Remove the markers to include it again.
+        </p>
+        {preview.error ? (
+          <p
+            role="alert"
+            className="mt-3 text-sm text-red-600 dark:text-red-400"
+          >
+            {preview.error}
+          </p>
+        ) : (
+          <pre className="mt-3 max-h-72 overflow-auto whitespace-pre-wrap rounded-md bg-slate-100 p-3 text-xs leading-5 text-slate-700 dark:bg-slate-900 dark:text-slate-300">
+            {preview.text || 'No text will be sent to AI.'}
+          </pre>
+        )}
+      </details>
+      <div className="mt-5">
+        <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+          Revision history
+        </h3>
+        {cvHistoryQuery.isLoading ? (
+          <p className="mt-2 text-xs text-slate-500">Loading history…</p>
+        ) : cvHistoryQuery.data?.length ? (
+          <ol className="mt-2 divide-y divide-slate-200 border-y border-slate-200 text-xs dark:divide-slate-800 dark:border-slate-800">
+            {cvHistoryQuery.data.map((revision) => (
+              <li
+                key={revision.id}
+                className="flex flex-wrap justify-between gap-2 py-2.5"
+              >
+                <span className="font-medium text-slate-700 dark:text-slate-200">
+                  Revision {revision.revision}
+                </span>
+                <span className="text-slate-500">
+                  {revision.word_count.toLocaleString()} words ·{' '}
+                  {revision.ai_visible_character_count.toLocaleString()}{' '}
+                  AI-visible characters ·{' '}
+                  {new Date(revision.updated_at).toLocaleString()}
+                </span>
+              </li>
+            ))}
+          </ol>
+        ) : (
+          <p className="mt-2 text-xs text-slate-500">
+            Save the CV to create its first immutable revision.
+          </p>
+        )}
+      </div>
+      {cv.previous && (
+        <p className="mt-3 text-xs text-slate-500">
+          Previous version: {cv.previous.word_count.toLocaleString()} words,
+          saved {new Date(cv.previous.updated_at).toLocaleString()}.
+        </p>
+      )}
     </section>
   );
 }
@@ -331,17 +734,87 @@ function AnalysisSection() {
   const { settingsQuery, updateSettings } = useSettingsData();
   const [threshold, setThreshold] = useState(70);
   const [model, setModel] = useState('gemini-2.5-flash');
-  useEffect(() => { if (settingsQuery.data) { setThreshold(settingsQuery.data.score_threshold); setModel(settingsQuery.data.llm_model); } }, [settingsQuery.data]);
+  useEffect(() => {
+    if (settingsQuery.data) {
+      setThreshold(settingsQuery.data.score_threshold);
+      setModel(settingsQuery.data.llm_model);
+    }
+  }, [settingsQuery.data]);
   if (settingsQuery.isLoading) return <LoadingState />;
-  if (settingsQuery.isError || !settingsQuery.data) return <ErrorState retry={() => void settingsQuery.refetch()} />;
-  const dirty = threshold !== settingsQuery.data.score_threshold || model !== settingsQuery.data.llm_model;
-  const save = () => updateSettings.mutate({ score_threshold: threshold, llm_model: model }, { onSuccess: () => toast.success('Analysis settings saved'), onError: () => toast.error('Analysis settings could not be saved') });
-  return <section><SectionHeader title="Analysis" description="Tune the fit threshold and Gemini model used for future analyses." /><div className="max-w-2xl space-y-6">
-    <div><div className="mb-2 flex items-center justify-between"><label htmlFor="threshold" className="text-sm font-medium">Fit score threshold</label><output className="font-mono text-sm font-semibold text-blue-600 dark:text-blue-400">{threshold}%</output></div><input id="threshold" type="range" min="0" max="100" value={threshold} onChange={(event) => setThreshold(Number(event.target.value))} className="w-full accent-blue-600" /><p className="mt-1 text-xs text-slate-500">Jobs below this score are treated as low fit by default.</p></div>
-    <div><label className="mb-2 block text-sm font-medium">Provider</label><div className="flex items-center gap-2 rounded-md border border-slate-300 bg-slate-100 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900"><Check className="h-4 w-4 text-emerald-500" />Google Gemini <span className="ml-auto text-xs text-slate-500">Available</span></div></div>
-    <div><label htmlFor="model" className="mb-2 block text-sm font-medium">Gemini model</label><input id="model" className={inputClass} value={model} onChange={(event) => setModel(event.target.value)} placeholder="gemini-2.5-flash" /></div>
-    <SectionActions dirty={dirty} pending={updateSettings.isPending} save={save} reset={() => { setThreshold(settingsQuery.data.score_threshold); setModel(settingsQuery.data.llm_model); }} />
-  </div></section>;
+  if (settingsQuery.isError || !settingsQuery.data)
+    return <ErrorState retry={() => void settingsQuery.refetch()} />;
+  const dirty =
+    threshold !== settingsQuery.data.score_threshold ||
+    model !== settingsQuery.data.llm_model;
+  const save = () =>
+    updateSettings.mutate(
+      { score_threshold: threshold, llm_model: model },
+      {
+        onSuccess: () => toast.success('Analysis settings saved'),
+        onError: () => toast.error('Analysis settings could not be saved'),
+      },
+    );
+  return (
+    <section>
+      <SectionHeader
+        title="Analysis"
+        description="Tune the fit threshold and Gemini model used for future analyses."
+      />
+      <div className="max-w-2xl space-y-6">
+        <div>
+          <div className="mb-2 flex items-center justify-between">
+            <label htmlFor="threshold" className="text-sm font-medium">
+              Fit score threshold
+            </label>
+            <output className="font-mono text-sm font-semibold text-blue-600 dark:text-blue-400">
+              {threshold}%
+            </output>
+          </div>
+          <input
+            id="threshold"
+            type="range"
+            min="0"
+            max="100"
+            value={threshold}
+            onChange={(event) => setThreshold(Number(event.target.value))}
+            className="w-full accent-blue-600"
+          />
+          <p className="mt-1 text-xs text-slate-500">
+            Jobs below this score are treated as low fit by default.
+          </p>
+        </div>
+        <div>
+          <label className="mb-2 block text-sm font-medium">Provider</label>
+          <div className="flex items-center gap-2 rounded-md border border-slate-300 bg-slate-100 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+            <Check className="h-4 w-4 text-emerald-500" />
+            Google Gemini{' '}
+            <span className="ml-auto text-xs text-slate-500">Available</span>
+          </div>
+        </div>
+        <div>
+          <label htmlFor="model" className="mb-2 block text-sm font-medium">
+            Gemini model
+          </label>
+          <input
+            id="model"
+            className={inputClass}
+            value={model}
+            onChange={(event) => setModel(event.target.value)}
+            placeholder="gemini-2.5-flash"
+          />
+        </div>
+        <SectionActions
+          dirty={dirty}
+          pending={updateSettings.isPending}
+          save={save}
+          reset={() => {
+            setThreshold(settingsQuery.data.score_threshold);
+            setModel(settingsQuery.data.llm_model);
+          }}
+        />
+      </div>
+    </section>
+  );
 }
 
 function DomainsSection() {
@@ -351,33 +824,345 @@ function DomainsSection() {
   useEffect(() => {
     if (!settingsQuery.data) return;
     setDomains(settingsQuery.data.applicable_domains);
-    setKeywords(Object.fromEntries(Object.entries(settingsQuery.data.domain_keywords).map(([domain, values]) => [domain, values?.join(', ') ?? ''])) as Partial<Record<Domain, string>>);
+    setKeywords(
+      Object.fromEntries(
+        Object.entries(settingsQuery.data.domain_keywords).map(
+          ([domain, values]) => [domain, values?.join(', ') ?? ''],
+        ),
+      ) as Partial<Record<Domain, string>>,
+    );
   }, [settingsQuery.data]);
   if (settingsQuery.isLoading) return <LoadingState />;
-  if (settingsQuery.isError || !settingsQuery.data) return <ErrorState retry={() => void settingsQuery.refetch()} />;
-  const serialize = () => Object.fromEntries(Object.entries(keywords).map(([domain, value]) => [domain, value?.split(',').map((item) => item.trim()).filter(Boolean) ?? []]));
-  const dirty = JSON.stringify(domains) !== JSON.stringify(settingsQuery.data.applicable_domains) || JSON.stringify(serialize()) !== JSON.stringify(settingsQuery.data.domain_keywords);
-  const reset = () => { setDomains(settingsQuery.data!.applicable_domains); setKeywords(Object.fromEntries(Object.entries(settingsQuery.data!.domain_keywords).map(([domain, values]) => [domain, values?.join(', ') ?? ''])) as Partial<Record<Domain, string>>); };
-  return <section><SectionHeader title="Target Domains" description="Choose relevant job families and the keywords used to classify them." /><div className="space-y-6">
-    <div><p className="mb-2 text-sm font-medium">Applicable domains</p><div className="flex flex-wrap gap-2">{Object.values(Domain).map((domain) => <button key={domain} type="button" onClick={() => setDomains((current) => current.includes(domain) ? current.filter((item) => item !== domain) : [...current, domain])} className={cn('rounded-md border px-3 py-1.5 text-xs font-semibold transition', domains.includes(domain) ? 'border-blue-600 bg-blue-600 text-slate-50' : 'border-slate-300 text-slate-600 hover:border-slate-400 dark:border-slate-700 dark:text-slate-300')}><Check className={cn('mr-1 inline h-3 w-3', !domains.includes(domain) && 'invisible')} />{domain}</button>)}</div></div>
-    {domains.length ? <div className="divide-y divide-slate-200 border-y border-slate-200 dark:divide-slate-800 dark:border-slate-800">{domains.map((domain) => <div key={domain} className="grid gap-2 py-4 md:grid-cols-[150px_1fr]"><label htmlFor={`keywords-${domain}`} className="pt-2 text-xs font-semibold tracking-wide text-slate-600 dark:text-slate-300">{domain}</label><div><textarea id={`keywords-${domain}`} className={cn(inputClass, 'min-h-20')} value={keywords[domain] ?? ''} onChange={(event) => setKeywords((current) => ({ ...current, [domain]: event.target.value }))} placeholder="Comma-separated keywords" /><p className="mt-1 text-xs text-slate-500">Comma-separated, matched without case sensitivity.</p></div></div>)}</div> : <p className="rounded-md border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500 dark:border-slate-700">Select at least one domain to configure classification.</p>}
-    <SectionActions dirty={dirty} pending={updateSettings.isPending} save={() => updateSettings.mutate({ applicable_domains: domains, domain_keywords: serialize() as SettingsType['domain_keywords'] }, { onSuccess: () => toast.success('Domain settings saved'), onError: () => toast.error('Domain settings could not be saved') })} reset={reset} />
-  </div></section>;
+  if (settingsQuery.isError || !settingsQuery.data)
+    return <ErrorState retry={() => void settingsQuery.refetch()} />;
+  const serialize = () =>
+    Object.fromEntries(
+      Object.entries(keywords).map(([domain, value]) => [
+        domain,
+        value
+          ?.split(',')
+          .map((item) => item.trim())
+          .filter(Boolean) ?? [],
+      ]),
+    );
+  const dirty =
+    JSON.stringify(domains) !==
+      JSON.stringify(settingsQuery.data.applicable_domains) ||
+    JSON.stringify(serialize()) !==
+      JSON.stringify(settingsQuery.data.domain_keywords);
+  const reset = () => {
+    setDomains(settingsQuery.data!.applicable_domains);
+    setKeywords(
+      Object.fromEntries(
+        Object.entries(settingsQuery.data!.domain_keywords).map(
+          ([domain, values]) => [domain, values?.join(', ') ?? ''],
+        ),
+      ) as Partial<Record<Domain, string>>,
+    );
+  };
+  return (
+    <section>
+      <SectionHeader
+        title="Target Domains"
+        description="Choose relevant job families and the keywords used to classify them."
+      />
+      <div className="space-y-6">
+        <div>
+          <p className="mb-2 text-sm font-medium">Applicable domains</p>
+          <div className="flex flex-wrap gap-2">
+            {Object.values(Domain).map((domain) => (
+              <button
+                key={domain}
+                type="button"
+                onClick={() =>
+                  setDomains((current) =>
+                    current.includes(domain)
+                      ? current.filter((item) => item !== domain)
+                      : [...current, domain],
+                  )
+                }
+                className={cn(
+                  'rounded-md border px-3 py-1.5 text-xs font-semibold transition',
+                  domains.includes(domain)
+                    ? 'border-blue-600 bg-blue-600 text-slate-50'
+                    : 'border-slate-300 text-slate-600 hover:border-slate-400 dark:border-slate-700 dark:text-slate-300',
+                )}
+              >
+                <Check
+                  className={cn(
+                    'mr-1 inline h-3 w-3',
+                    !domains.includes(domain) && 'invisible',
+                  )}
+                />
+                {domain}
+              </button>
+            ))}
+          </div>
+        </div>
+        {domains.length ? (
+          <div className="divide-y divide-slate-200 border-y border-slate-200 dark:divide-slate-800 dark:border-slate-800">
+            {domains.map((domain) => (
+              <div
+                key={domain}
+                className="grid gap-2 py-4 md:grid-cols-[150px_1fr]"
+              >
+                <label
+                  htmlFor={`keywords-${domain}`}
+                  className="pt-2 text-xs font-semibold tracking-wide text-slate-600 dark:text-slate-300"
+                >
+                  {domain}
+                </label>
+                <div>
+                  <textarea
+                    id={`keywords-${domain}`}
+                    className={cn(inputClass, 'min-h-20')}
+                    value={keywords[domain] ?? ''}
+                    onChange={(event) =>
+                      setKeywords((current) => ({
+                        ...current,
+                        [domain]: event.target.value,
+                      }))
+                    }
+                    placeholder="Comma-separated keywords"
+                  />
+                  <p className="mt-1 text-xs text-slate-500">
+                    Comma-separated, matched without case sensitivity.
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="rounded-md border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500 dark:border-slate-700">
+            Select at least one domain to configure classification.
+          </p>
+        )}
+        <SectionActions
+          dirty={dirty}
+          pending={updateSettings.isPending}
+          save={() =>
+            updateSettings.mutate(
+              {
+                applicable_domains: domains,
+                domain_keywords: serialize() as SettingsType['domain_keywords'],
+              },
+              {
+                onSuccess: () => toast.success('Domain settings saved'),
+                onError: () =>
+                  toast.error('Domain settings could not be saved'),
+              },
+            )
+          }
+          reset={reset}
+        />
+      </div>
+    </section>
+  );
+}
+
+function RemindersSection(): React.JSX.Element {
+  const { settingsQuery, updateSettings } = useSettingsData();
+  const [enabled, setEnabled] = useState(true);
+  const [days, setDays] = useState(3);
+  const [timezone, setTimezone] = useState('Asia/Jerusalem');
+  useEffect(() => {
+    if (!settingsQuery.data) return;
+    setEnabled(settingsQuery.data.reminders_enabled);
+    setDays(settingsQuery.data.reminder_default_days);
+    setTimezone(settingsQuery.data.reminder_timezone);
+  }, [settingsQuery.data]);
+  if (settingsQuery.isLoading) return <LoadingState />;
+  if (settingsQuery.isError || !settingsQuery.data)
+    return <ErrorState retry={() => void settingsQuery.refetch()} />;
+  const current = settingsQuery.data;
+  const dirty =
+    enabled !== current.reminders_enabled ||
+    days !== current.reminder_default_days ||
+    timezone !== current.reminder_timezone;
+  const reset = (): void => {
+    setEnabled(current.reminders_enabled);
+    setDays(current.reminder_default_days);
+    setTimezone(current.reminder_timezone);
+  };
+  return (
+    <section>
+      <SectionHeader
+        title="Reminders"
+        description="Set follow-up defaults and the timezone used to group due actions."
+      />
+      <div className="max-w-2xl space-y-5">
+        <label className="flex items-start gap-3 border-y border-slate-200 py-4 dark:border-slate-800">
+          <input
+            type="checkbox"
+            checked={enabled}
+            onChange={(event) => setEnabled(event.target.checked)}
+            className="mt-0.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+          />
+          <span>
+            <span className="block text-sm font-medium">
+              Telegram reminders
+            </span>
+            <span className="mt-0.5 block text-xs text-slate-500">
+              Only allow-listed chat IDs receive action labels and job names.
+              Notes and CV content are never sent.
+            </span>
+          </span>
+        </label>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="text-sm font-medium">
+            Default follow-up delay
+            <span className="mt-1 flex items-center gap-2">
+              <input
+                type="number"
+                min="0"
+                max="365"
+                value={days}
+                onChange={(event) => setDays(Number(event.target.value))}
+                className={inputClass}
+              />
+              <span className="text-xs font-normal text-slate-500">days</span>
+            </span>
+          </label>
+          <label className="text-sm font-medium">
+            Timezone
+            <input
+              value={timezone}
+              onChange={(event) => setTimezone(event.target.value)}
+              className={cn(inputClass, 'mt-1')}
+              placeholder="Asia/Jerusalem"
+            />
+          </label>
+        </div>
+        <SectionActions
+          dirty={
+            dirty &&
+            Number.isInteger(days) &&
+            days >= 0 &&
+            days <= 365 &&
+            Boolean(timezone.trim())
+          }
+          pending={updateSettings.isPending}
+          save={() =>
+            updateSettings.mutate(
+              {
+                reminders_enabled: enabled,
+                reminder_default_days: days,
+                reminder_timezone: timezone.trim(),
+              },
+              {
+                onSuccess: () => toast.success('Reminder settings saved'),
+                onError: () =>
+                  toast.error('Reminder settings could not be saved'),
+              },
+            )
+          }
+          reset={reset}
+        />
+      </div>
+    </section>
+  );
 }
 
 function IntegrationsSection() {
   const { settingsQuery, updateSettings } = useSettingsData();
   const [chatIds, setChatIds] = useState('');
-  useEffect(() => { if (settingsQuery.data) setChatIds(settingsQuery.data.telegram_allowed_chat_ids.join(', ')); }, [settingsQuery.data]);
+  useEffect(() => {
+    if (settingsQuery.data)
+      setChatIds(settingsQuery.data.telegram_allowed_chat_ids.join(', '));
+  }, [settingsQuery.data]);
   if (settingsQuery.isLoading) return <LoadingState />;
-  if (settingsQuery.isError || !settingsQuery.data) return <ErrorState retry={() => void settingsQuery.refetch()} />;
-  const parsed = chatIds.split(',').map((item) => item.trim()).filter(Boolean);
-  const valid = parsed.every((item) => /^-?\d+$/.test(item) && Number.isSafeInteger(Number(item)));
+  if (settingsQuery.isError || !settingsQuery.data)
+    return <ErrorState retry={() => void settingsQuery.refetch()} />;
+  const parsed = chatIds
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+  const valid = parsed.every(
+    (item) => /^-?\d+$/.test(item) && Number.isSafeInteger(Number(item)),
+  );
   const ids = parsed.map(Number);
-  const dirty = JSON.stringify(ids) !== JSON.stringify(settingsQuery.data.telegram_allowed_chat_ids);
-  return <section><SectionHeader title="Integrations" description="Restrict Telegram bot access to a known list of chat IDs." /><div className="max-w-2xl"><label htmlFor="chat-ids" className="mb-2 block text-sm font-medium">Allowed Telegram chat IDs</label><input id="chat-ids" className={inputClass} value={chatIds} onChange={(event) => setChatIds(event.target.value)} placeholder="12345678, 87654321" /><p className={cn('mt-1 text-xs', valid ? 'text-slate-500' : 'text-red-600 dark:text-red-400')}>{valid ? 'Use comma-separated numeric IDs. Leave blank to deny all chats.' : 'Every chat ID must be a whole number.'}</p><SectionActions dirty={dirty && valid} pending={updateSettings.isPending} save={() => updateSettings.mutate({ telegram_allowed_chat_ids: ids }, { onSuccess: () => toast.success('Integration settings saved'), onError: () => toast.error('Integration settings could not be saved') })} reset={() => setChatIds(settingsQuery.data!.telegram_allowed_chat_ids.join(', '))} /></div></section>;
+  const dirty =
+    JSON.stringify(ids) !==
+    JSON.stringify(settingsQuery.data.telegram_allowed_chat_ids);
+  return (
+    <section>
+      <SectionHeader
+        title="Integrations"
+        description="Restrict Telegram bot access to a known list of chat IDs."
+      />
+      <div className="max-w-2xl">
+        <label htmlFor="chat-ids" className="mb-2 block text-sm font-medium">
+          Allowed Telegram chat IDs
+        </label>
+        <input
+          id="chat-ids"
+          className={inputClass}
+          value={chatIds}
+          onChange={(event) => setChatIds(event.target.value)}
+          placeholder="12345678, 87654321"
+        />
+        <p
+          className={cn(
+            'mt-1 text-xs',
+            valid ? 'text-slate-500' : 'text-red-600 dark:text-red-400',
+          )}
+        >
+          {valid
+            ? 'Use comma-separated numeric IDs. Leave blank to deny all chats.'
+            : 'Every chat ID must be a whole number.'}
+        </p>
+        <SectionActions
+          dirty={dirty && valid}
+          pending={updateSettings.isPending}
+          save={() =>
+            updateSettings.mutate(
+              { telegram_allowed_chat_ids: ids },
+              {
+                onSuccess: () => toast.success('Integration settings saved'),
+                onError: () =>
+                  toast.error('Integration settings could not be saved'),
+              },
+            )
+          }
+          reset={() =>
+            setChatIds(settingsQuery.data!.telegram_allowed_chat_ids.join(', '))
+          }
+        />
+      </div>
+    </section>
+  );
 }
 
-function SectionActions({ dirty, pending, save, reset }: { dirty: boolean; pending: boolean; save: () => void; reset: () => void }) {
-  return <div className="mt-6 flex gap-2 border-t border-slate-200 pt-4 dark:border-slate-800"><button type="button" className={primaryButton} disabled={!dirty || pending} onClick={save}><Save className="h-4 w-4" />{pending ? 'Saving…' : 'Save changes'}</button><button type="button" className={secondaryButton} disabled={!dirty || pending} onClick={reset}>Reset</button></div>;
+function SectionActions({
+  dirty,
+  pending,
+  save,
+  reset,
+}: {
+  dirty: boolean;
+  pending: boolean;
+  save: () => void;
+  reset: () => void;
+}) {
+  return (
+    <div className="mt-6 flex gap-2 border-t border-slate-200 pt-4 dark:border-slate-800">
+      <button
+        type="button"
+        className={primaryButton}
+        disabled={!dirty || pending}
+        onClick={save}
+      >
+        <Save className="h-4 w-4" />
+        {pending ? 'Saving…' : 'Save changes'}
+      </button>
+      <button
+        type="button"
+        className={secondaryButton}
+        disabled={!dirty || pending}
+        onClick={reset}
+      >
+        Reset
+      </button>
+    </div>
+  );
 }

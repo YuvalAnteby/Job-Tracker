@@ -223,6 +223,9 @@ export interface Job {
   analysis_model: string | null;
   prompt_version: string | null;
   analyzed_at: string | null;
+  analysis_revision_id?: string | null;
+  cv_revision_id?: string | null;
+  cv_revision?: number | null;
 
   // Overrides
   score_override?: number;
@@ -249,7 +252,39 @@ export interface Job {
 
   added_at: string;
   applied_at?: string;
+  application_cv_revision_id?: string | null;
   updated_at: string;
+}
+
+export interface AnalysisRevision {
+  id: string;
+  cv_revision: number | null;
+  status: AnalysisStatus;
+  score: number | null;
+  recommendation: Recommendation | null;
+  error: string | null;
+  model: string | null;
+  prompt_version: string | null;
+  analyzed_at: string;
+}
+
+export interface ReanalysisComparison {
+  id: string;
+  before: {
+    score: number | null;
+    recommendation: Recommendation | null;
+    requirements: string[];
+  };
+  after: {
+    score: number | null;
+    recommendation: Recommendation | null;
+    requirements: string[];
+  };
+}
+
+export interface ReanalysisResult {
+  succeeded: ReanalysisComparison[];
+  failed: { id: string; error: string }[];
 }
 
 export interface JobFilters {

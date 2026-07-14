@@ -9,6 +9,7 @@ import { SettingsModule } from './modules/settings/settings.module';
 import { TelegramModule } from './modules/telegram/telegram.module';
 import { SkillsModule } from './modules/skills/skills.module';
 import { RoadmapModule } from './modules/roadmap/roadmap.module';
+import { ApplicationsModule } from './modules/applications/applications.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { RoadmapModule } from './modules/roadmap/roadmap.module';
     TelegramModule,
     SkillsModule,
     RoadmapModule,
+    ApplicationsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

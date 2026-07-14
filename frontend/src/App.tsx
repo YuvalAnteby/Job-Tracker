@@ -10,6 +10,7 @@ import Settings from './pages/Settings/Settings';
 import Pipeline from './pages/Pipeline/Pipeline';
 import Skills from './pages/Skills/Skills';
 import Roadmap from './pages/Roadmap/Roadmap';
+import Analytics from './pages/Analytics/Analytics';
 
 // Placeholder components for routes
 const JobDetail = () => <div className="text-2xl font-bold">Job Detail</div>;
@@ -31,6 +32,7 @@ const router = createBrowserRouter([
       { path: '/pipeline', element: <Pipeline /> },
       { path: '/skills', element: <Skills /> },
       { path: '/roadmap', element: <Roadmap /> },
+      { path: '/analytics', element: <Analytics /> },
       { path: '/settings', element: <Settings /> },
       { path: '*', element: <NotFound /> },
     ],

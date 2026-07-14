@@ -1,10 +1,11 @@
 ﻿import React, { useState } from 'react';
-import { Domain } from '../../types';
+import { Domain, type ReanalysisComparison } from '../../types';
 import {
   useJob,
   useUpdateJob,
   useDeleteJob,
   useReanalyzeJob,
+  useAnalysisHistory,
 } from '../../hooks/useJobs';
 import { ScoreBadge, DomainTag, StatusBadge } from '../shared/Badges';
 import { Modal } from '../shared/Modal';
@@ -27,6 +28,10 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
   const updateJob = useUpdateJob();
   const deleteJob = useDeleteJob();
   const reanalyzeJob = useReanalyzeJob();
+  const analysisHistory = useAnalysisHistory(jobId || '');
+  const [comparison, setComparison] = useState<ReanalysisComparison | null>(
+    null,
+  );
 
   const [notes, setNotes] = useState(job?.notes || '');
   const [scoreOverride, setScoreOverride] = useState<number | string>(
@@ -102,7 +107,11 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
   const handleReanalyze = () => {
     if (jobId) {
       reanalyzeJob.mutate(jobId, {
-        onSuccess: () => toast.success('Job re-analyzed successfully'),
+        onSuccess: (result) => {
+          setComparison(result.succeeded[0] ?? null);
+          if (result.failed.length) toast.error(result.failed[0].error);
+          else toast.success('Job re-analyzed successfully');
+        },
         onError: () => toast.error('Failed to re-analyze job'),
       });
     }
@@ -178,6 +187,66 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
             onRetry={handleReanalyze}
             retrying={reanalyzeJob.isPending}
           />
+
+          {comparison && (
+            <section className="border-y border-slate-200 py-4 text-sm dark:border-slate-800">
+              <h4 className="font-semibold text-slate-900 dark:text-slate-100">
+                Reanalysis comparison
+              </h4>
+              <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                {(['before', 'after'] as const).map((side) => (
+                  <div key={side}>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      {side}
+                    </p>
+                    <p className="mt-1">
+                      Score:{' '}
+                      <strong>{comparison[side].score ?? 'Unknown'}</strong> ·
+                      Recommendation:{' '}
+                      <strong>
+                        {comparison[side].recommendation ?? 'Unknown'}
+                      </strong>
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      Requirements:{' '}
+                      {comparison[side].requirements.join(', ') ||
+                        'None recorded'}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          <details className="border-b border-slate-200 pb-4 dark:border-slate-800">
+            <summary className="cursor-pointer text-sm font-semibold text-slate-800 dark:text-slate-200">
+              Analysis history ({analysisHistory.data?.length ?? 0})
+            </summary>
+            {analysisHistory.data?.length ? (
+              <ol className="mt-3 space-y-2">
+                {analysisHistory.data.map((revision) => (
+                  <li
+                    key={revision.id}
+                    className="flex flex-wrap justify-between gap-2 text-xs text-slate-500"
+                  >
+                    <span className="font-medium text-slate-700 dark:text-slate-200">
+                      {revision.status} · score {revision.score ?? 'unknown'} ·
+                      CV revision {revision.cv_revision ?? 'unknown'}
+                    </span>
+                    <span>
+                      {new Date(revision.analyzed_at).toLocaleString()} ·{' '}
+                      {revision.model ?? 'unknown model'} ·{' '}
+                      {revision.prompt_version ?? 'unknown prompt'}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <p className="mt-2 text-xs text-slate-500">
+                No analysis revisions recorded yet.
+              </p>
+            )}
+          </details>
 
           {/* Notes */}
           <div className="space-y-2">

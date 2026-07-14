@@ -8,7 +8,13 @@ describe('LlmService master CV integration', () => {
       get: jest.fn((key: string) =>
         Promise.resolve(key === 'llm_provider' ? 'gemini' : 'gemini-2.5-flash'),
       ),
-      getMasterCvText: jest.fn().mockResolvedValue('Current editable CV'),
+      getMasterCvContext: jest
+        .fn()
+        .mockResolvedValue({
+          id: 'cv-1',
+          revision: 1,
+          text: 'Current editable CV',
+        }),
     };
     const gemini = {
       analyzeJob: jest.fn().mockResolvedValue({ score: 90 }),
@@ -20,7 +26,7 @@ describe('LlmService master CV integration', () => {
 
     await service.analyzeJob('Job description');
 
-    expect(settings.getMasterCvText).toHaveBeenCalledTimes(1);
+    expect(settings.getMasterCvContext).toHaveBeenCalledTimes(1);
     expect(gemini.analyzeJob).toHaveBeenCalledWith(
       'Job description',
       'Current editable CV',
