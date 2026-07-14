@@ -4,10 +4,10 @@ import { Repository, IsNull } from 'typeorm';
 import { GapSummary } from './entities/gap-summary.entity';
 import { Job } from '../jobs/entities/job.entity';
 import { Domain } from '../jobs/enums/domain.enum';
-import { JobStatus } from '../jobs/enums/job-status.enum';
 import { LlmService } from '../llm/llm.service';
 import { JobSummaryInput } from '../llm/interfaces/job-analysis.interface';
 import { TelegramService } from '../telegram/telegram.service';
+import { AnalysisStatus } from '../jobs/enums/analysis-status.enum';
 
 @Injectable()
 export class GapService {
@@ -40,12 +40,13 @@ export class GapService {
       `Starting gap analysis background job${domainFilter ? ` for domain: ${domainFilter}` : ''}`,
     );
 
+    let jobCount = 0;
     try {
       // 1. Fetch relevant jobs
       const queryBuilder = this.jobRepository
         .createQueryBuilder('job')
         .leftJoinAndSelect('job.requirements', 'requirement')
-        .where('job.status = :status', { status: JobStatus.ACTIVE });
+        .where('job.include_in_gap = true');
 
       if (domainFilter) {
         queryBuilder.andWhere(
@@ -55,9 +56,10 @@ export class GapService {
       }
 
       const jobs = await queryBuilder.getMany();
+      jobCount = jobs.length;
 
       if (jobs.length === 0) {
-        this.logger.warn('No active jobs found for gap analysis.');
+        this.logger.warn('No jobs included in gap analysis.');
         return;
       }
 
@@ -80,8 +82,13 @@ export class GapService {
       // 4. Save to DB
       const gapSummary = this.gapSummaryRepository.create({
         domain_filter: domainFilter || null,
-        summary: summaryResult,
+        summary: summaryResult.data,
         job_count: jobs.length,
+        analysis_status: AnalysisStatus.COMPLETED,
+        analysis_error: null,
+        analysis_model: summaryResult.model,
+        prompt_version: summaryResult.prompt_version,
+        analyzed_at: summaryResult.analyzed_at,
       });
 
       await this.gapSummaryRepository.save(gapSummary);
@@ -92,17 +99,29 @@ export class GapService {
       // 5. Notify via Telegram
       await this.notifyViaTelegram(gapSummary);
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : String(error);
-      const stack = error instanceof Error ? error.stack : undefined;
-      this.logger.error(
-        `Error during background gap analysis: ${message}`,
-        stack,
+      const message =
+        error instanceof Error && error.name === 'InvalidLlmOutputError'
+          ? error.message
+          : 'AI provider request failed';
+      this.logger.error(`Error during background gap analysis: ${message}`);
+      await this.gapSummaryRepository.save(
+        this.gapSummaryRepository.create({
+          domain_filter: domainFilter || null,
+          summary: null,
+          job_count: jobCount,
+          analysis_status: AnalysisStatus.FAILED,
+          analysis_error: message.replace(/[\r\n]+/g, ' ').slice(0, 500),
+          analysis_model: null,
+          prompt_version: null,
+          analyzed_at: new Date(),
+        }),
       );
     }
   }
 
   private async notifyViaTelegram(gapSummary: GapSummary): Promise<void> {
     const { summary, domain_filter, job_count } = gapSummary;
+    if (!summary) return;
     const domainLabel = domain_filter || 'All Domains';
 
     let message = `✅ <b>Gap Analysis Ready</b> (${domainLabel} · ${job_count} jobs)\n\n`;
@@ -127,7 +146,7 @@ export class GapService {
       if (data.partially_known?.length > 0) {
         message += `🟡 <b>Partial:</b> ${data.partially_known.join(', ')}\n`;
       }
-      
+
       message += `\n`;
     });
 
@@ -143,7 +162,10 @@ export class GapService {
 
   async getLatest(domainFilter?: Domain): Promise<GapSummary | null> {
     return this.gapSummaryRepository.findOne({
-      where: { domain_filter: domainFilter ?? IsNull() },
+      where: {
+        domain_filter: domainFilter ?? IsNull(),
+        analysis_status: AnalysisStatus.COMPLETED,
+      },
       order: { generated_at: 'DESC' },
     });
   }
