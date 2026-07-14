@@ -12,6 +12,9 @@ import { CreateJobDto } from './dto/create-job.dto';
 import { UpdateJobDto } from './dto/update-job.dto';
 import { LlmService } from '../llm/llm.service';
 import { SettingsService } from '../settings/settings.service';
+import { AnalysisStatus } from './enums/analysis-status.enum';
+import { Domain } from './enums/domain.enum';
+import { calculateScore, recommend } from './job-scoring';
 
 @Injectable()
 export class JobsService {
@@ -41,25 +44,39 @@ export class JobsService {
 
     const job = this.jobRepository.create({
       ...createJobDto,
+      domain: Domain.OTHER,
+      llm_score: null,
+      llm_domain: null,
+      llm_summary: null,
+      llm_is_applicable: null,
+      analysis_status: AnalysisStatus.PENDING,
       posted_at: createJobDto.posted_at
         ? new Date(createJobDto.posted_at)
         : null,
     });
 
-    return this.processJobAnalysis(job, createJobDto.description, createJobDto.company_name, createJobDto.title);
+    await this.jobRepository.save(job);
+    return this.processJobAnalysis(
+      job,
+      createJobDto.description,
+      createJobDto.company_name,
+      createJobDto.title,
+    );
   }
 
   async reanalyze(id: string): Promise<Job> {
     const job = await this.findOne(id);
     this.logger.log(`Re-analyzing job from ID: ${id}`);
-    
-    // Remove old requirements
-    if (job.requirements && job.requirements.length > 0) {
-      await this.requirementRepository.remove(job.requirements);
-      job.requirements = [];
-    }
-    
-    return this.processJobAnalysis(job, job.description, job.company_name, job.title);
+
+    job.analysis_status = AnalysisStatus.PENDING;
+    job.analysis_error = null;
+    await this.jobRepository.save(job);
+    return this.processJobAnalysis(
+      job,
+      job.description,
+      job.company_name,
+      job.title,
+    );
   }
 
   private async processJobAnalysis(
@@ -68,54 +85,83 @@ export class JobsService {
     providedCompany: string,
     providedTitle: string,
   ): Promise<Job> {
-    // 1. LLM Analysis
-    const analysis = await this.llmService.analyzeJob(description);
+    try {
+      const result = await this.llmService.analyzeJob(description);
+      const analysis = result.data;
+      const score = calculateScore(analysis.score_breakdown);
+      const recommendation = recommend(analysis.score_breakdown, score);
 
-    // 2. Application logic
-    const scoreThreshold = await this.settingsService.get<number>(
-      'score_threshold',
-      70,
-    );
-    const applicableDomains = await this.settingsService.get<string[]>(
-      'applicable_domains',
-      ['BACKEND', 'FULLSTACK'],
-    );
+      // 2. Application logic
+      const scoreThreshold = await this.settingsService.get<number>(
+        'score_threshold',
+        70,
+      );
+      const applicableDomains = await this.settingsService.get<string[]>(
+        'applicable_domains',
+        ['BACKEND', 'FULLSTACK'],
+      );
 
-    // Determine applicability based on score and domain
-    const isApplicableByScore = analysis.score >= scoreThreshold;
-    const isApplicableByDomain = applicableDomains.includes(analysis.domain);
+      // Determine applicability based on score and domain
+      const isApplicableByScore = score >= scoreThreshold;
+      const isApplicableByDomain = applicableDomains.includes(analysis.domain);
 
-    // Use provided company/title if given, otherwise fall back to LLM results or defaults
-    const company_name =
-      providedCompany === 'skip'
-        ? analysis.company_name || 'Unknown Company'
-        : providedCompany;
+      // Use provided company/title if given, otherwise fall back to LLM results or defaults
+      const company_name =
+        providedCompany === 'skip'
+          ? analysis.company_name || 'Unknown Company'
+          : providedCompany;
 
-    const title =
-      providedTitle === 'skip'
-        ? analysis.title || 'Unknown Title'
-        : providedTitle;
+      const title =
+        providedTitle === 'skip'
+          ? analysis.title || 'Unknown Title'
+          : providedTitle;
 
-    // Save job and requirements to DB
-    Object.assign(job, {
-      company_name,
-      title,
-      llm_score: analysis.score,
-      llm_domain: analysis.domain,
-      domain: analysis.domain, // Default domain is LLM domain
-      llm_summary: analysis.summary,
-      llm_is_applicable: isApplicableByScore && isApplicableByDomain,
-      requirements: analysis.requirements.map((req, index) =>
-        this.requirementRepository.create({
-          name: req.name,
-          met_status: req.met_status,
-          reasoning: req.reasoning,
-          order: index,
-        }),
-      ),
-    });
+      // Save job and requirements to DB
+      Object.assign(job, {
+        company_name,
+        title,
+        llm_score: score,
+        llm_domain: analysis.domain,
+        domain: analysis.domain, // Default domain is LLM domain
+        llm_summary: analysis.summary,
+        llm_is_applicable: isApplicableByScore && isApplicableByDomain,
+        score_breakdown: analysis.score_breakdown,
+        recommendation,
+        analysis_status: AnalysisStatus.COMPLETED,
+        analysis_error: null,
+        analysis_model: result.model,
+        prompt_version: result.prompt_version,
+        analyzed_at: result.analyzed_at,
+        requirements: analysis.requirements.map((req, index) =>
+          this.requirementRepository.create({
+            name: req.name,
+            met_status: req.met_status,
+            reasoning: req.reasoning,
+            job_description_excerpt: req.job_description_excerpt,
+            cv_evidence: req.cv_evidence,
+            evidence_inferred: req.evidence_inferred,
+            order: index,
+          }),
+        ),
+      });
 
-    return this.jobRepository.save(job);
+      if (job.requirements?.length) {
+        await this.requirementRepository.delete({ job_id: job.id });
+      }
+      return this.jobRepository.save(job);
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error && error.name === 'InvalidLlmOutputError'
+          ? error.message
+          : 'AI provider request failed';
+      job.analysis_status = AnalysisStatus.FAILED;
+      job.analysis_error = message.replace(/[\r\n]+/g, ' ').slice(0, 500);
+      job.analyzed_at = new Date();
+      this.logger.warn(
+        `Job analysis failed for ${job.id}: ${job.analysis_error}`,
+      );
+      return this.jobRepository.save(job);
+    }
   }
 
   async findAll() {

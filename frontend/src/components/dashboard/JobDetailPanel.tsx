@@ -1,81 +1,48 @@
 ﻿import React, { useState } from 'react';
-import { Job, JobStatus, Domain, MetStatus } from '../../types';
-import { useJob, useUpdateJob, useDeleteJob, useReanalyzeJob } from '../../hooks/useJobs';
+import { Domain } from '../../types';
+import {
+  useJob,
+  useUpdateJob,
+  useDeleteJob,
+  useReanalyzeJob,
+} from '../../hooks/useJobs';
 import { ScoreBadge, DomainTag, StatusBadge } from '../shared/Badges';
 import { Modal } from '../shared/Modal';
-import { 
-  CheckCircle, 
-  XCircle, 
-  AlertTriangle, 
-  ExternalLink, 
-  ChevronDown, 
-  ChevronUp, 
-  Trash2,
-  Loader2,
-  Save,
-  RefreshCw,
-  FileText,
-  X
-} from 'lucide-react';
+import { ExternalLink, Trash2, Loader2, Save, FileText, X } from 'lucide-react';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import { cn } from '../../utils/cn';
+import { AnalysisDetails } from './AnalysisDetails';
 
 interface JobDetailPanelProps {
   jobId: string | null;
   onClose: () => void;
 }
 
-const RequirementRow: React.FC<{ requirement: any }> = ({ requirement }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
-
-  const getIcon = (status: MetStatus) => {
-    switch (status) {
-      case MetStatus.MET:
-        return <CheckCircle className="h-5 w-5 text-green-500" />;
-      case MetStatus.NOT_MET:
-        return <XCircle className="h-5 w-5 text-red-500" />;
-      case MetStatus.UNCERTAIN:
-        return <AlertTriangle className="h-5 w-5 text-yellow-500" />;
-    }
-  };
-
-  return (
-    <div className="border-b border-gray-100 dark:border-slate-800 last:border-0">
-      <button
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full flex items-start sm:items-center justify-between py-3 hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors px-3 sm:px-4 rounded-lg gap-2"
-      >
-        <div className="flex items-start sm:items-center gap-3 text-left pr-2">
-          <div className="shrink-0 mt-0.5 sm:mt-0">
-            {getIcon(requirement.met_status)}
-          </div>
-          <span className="font-medium text-gray-700 dark:text-slate-300">{requirement.name}</span>
-        </div>
-        <div className="shrink-0 mt-1 sm:mt-0">
-          {isExpanded ? <ChevronUp className="h-4 w-4 text-gray-400 dark:text-slate-500" /> : <ChevronDown className="h-4 w-4 text-gray-400 dark:text-slate-500" />}
-        </div>
-      </button>
-      {isExpanded && (
-        <div className="pb-4 pl-10 sm:pl-12 pr-4 text-sm text-gray-600 dark:text-slate-400 animate-in fade-in slide-in-from-top-1">
-          {requirement.reasoning}
-        </div>
-      )}
-    </div>
-  );
-};
-
-export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({ jobId, onClose }) => {
+export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
+  jobId,
+  onClose,
+}) => {
   const { data: job, isLoading } = useJob(jobId || '');
   const updateJob = useUpdateJob();
   const deleteJob = useDeleteJob();
   const reanalyzeJob = useReanalyzeJob();
 
   const [notes, setNotes] = useState(job?.notes || '');
-  const [scoreOverride, setScoreOverride] = useState<number | string>(job?.score_override || '');
-  const [domainOverride, setDomainOverride] = useState<Domain | ''>(job?.domain_override || '');
-  const [isApplicableOverride, setIsApplicableOverride] = useState<'auto' | 'yes' | 'no'>(
-    job?.is_applicable_override === true ? 'yes' : job?.is_applicable_override === false ? 'no' : 'auto'
+  const [scoreOverride, setScoreOverride] = useState<number | string>(
+    job?.score_override || '',
+  );
+  const [domainOverride, setDomainOverride] = useState<Domain | ''>(
+    job?.domain_override || '',
+  );
+  const [isApplicableOverride, setIsApplicableOverride] = useState<
+    'auto' | 'yes' | 'no'
+  >(
+    job?.is_applicable_override === true
+      ? 'yes'
+      : job?.is_applicable_override === false
+        ? 'no'
+        : 'auto',
   );
   const [isListingModalOpen, setIsListingModalOpen] = useState(false);
 
@@ -86,7 +53,11 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({ jobId, onClose }
       setScoreOverride(job.score_override ?? '');
       setDomainOverride(job.domain_override || '');
       setIsApplicableOverride(
-        job.is_applicable_override === true ? 'yes' : job.is_applicable_override === false ? 'no' : 'auto'
+        job.is_applicable_override === true
+          ? 'yes'
+          : job.is_applicable_override === false
+            ? 'no'
+            : 'auto',
       );
     }
   }, [job]);
@@ -94,16 +65,26 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({ jobId, onClose }
   if (!jobId) return null;
 
   const handleSaveOverrides = () => {
-    updateJob.mutate({
-      id: jobId,
-      notes: notes || undefined,
-      score_override: scoreOverride === '' ? undefined : Number(scoreOverride),
-      domain_override: domainOverride === '' ? undefined : domainOverride as Domain,
-      is_applicable_override: isApplicableOverride === 'yes' ? true : isApplicableOverride === 'no' ? false : undefined,
-    }, {
-      onSuccess: () => toast.success('Changes saved successfully'),
-      onError: () => toast.error('Failed to save changes'),
-    });
+    updateJob.mutate(
+      {
+        id: jobId,
+        notes: notes || undefined,
+        score_override:
+          scoreOverride === '' ? undefined : Number(scoreOverride),
+        domain_override:
+          domainOverride === '' ? undefined : (domainOverride as Domain),
+        is_applicable_override:
+          isApplicableOverride === 'yes'
+            ? true
+            : isApplicableOverride === 'no'
+              ? false
+              : undefined,
+      },
+      {
+        onSuccess: () => toast.success('Changes saved successfully'),
+        onError: () => toast.error('Failed to save changes'),
+      },
+    );
   };
 
   const handleDelete = () => {
@@ -143,21 +124,33 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({ jobId, onClose }
       {isLoading || !job ? (
         <div className="flex flex-col items-center justify-center py-10 space-y-4">
           <Loader2 className="h-8 w-8 text-blue-600 animate-spin" />
-          <span className="text-gray-500 dark:text-slate-400 font-medium">Fetching job details...</span>
+          <span className="text-gray-500 dark:text-slate-400 font-medium">
+            Fetching job details...
+          </span>
         </div>
       ) : (
         <div className="space-y-6">
           {/* Header Info */}
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white dark:bg-slate-950 p-4 rounded-xl border border-gray-100 dark:border-slate-800">
             <div className="flex flex-wrap items-center gap-3">
-              <ScoreBadge score={job.effective_score} hasOverride={!!job.score_override} size="lg" />
+              <ScoreBadge
+                score={job.effective_score}
+                hasOverride={!!job.score_override}
+                size="lg"
+              />
               <DomainTag domain={job.effective_domain} />
               <StatusBadge status={job.status} />
             </div>
             <div className="flex flex-col sm:flex-row sm:items-center gap-4 text-sm text-gray-500 dark:text-slate-400">
               <div className="flex flex-col">
-                <span>Added: {format(new Date(job.added_at), 'MMM d, yyyy')}</span>
-                {job.posted_at && <span>Posted: {format(new Date(job.posted_at), 'MMM d, yyyy')}</span>}
+                <span>
+                  Added: {format(new Date(job.added_at), 'MMM d, yyyy')}
+                </span>
+                {job.posted_at && (
+                  <span>
+                    Posted: {format(new Date(job.posted_at), 'MMM d, yyyy')}
+                  </span>
+                )}
               </div>
               <div className="flex items-center gap-4 pt-3 sm:pt-0 border-t sm:border-t-0 sm:border-l border-gray-200 dark:border-slate-700 sm:pl-4">
                 <button
@@ -167,9 +160,9 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({ jobId, onClose }
                   <FileText className="h-4 w-4" />
                   <span>Show Listing</span>
                 </button>
-                <a 
-                  href={job.url} 
-                  target="_blank" 
+                <a
+                  href={job.url}
+                  target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center space-x-1 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium border-l border-gray-200 dark:border-slate-700 pl-4"
                 >
@@ -180,42 +173,17 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({ jobId, onClose }
             </div>
           </div>
 
-          {/* LLM Summary */}
-          {job.llm_summary && (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between gap-2">
-                <h4 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">AI Summary</h4>
-                <button
-                  onClick={handleReanalyze}
-                  disabled={reanalyzeJob.isPending}
-                  className="flex items-center space-x-1 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium disabled:opacity-50"
-                >
-                  <RefreshCw className={cn("h-3 w-3", reanalyzeJob.isPending && "animate-spin")} />
-                  <span>{reanalyzeJob.isPending ? 'Regenerating...' : 'Regenerate'}</span>
-                </button>
-              </div>
-              <p className="text-blue-900 dark:text-blue-100 leading-relaxed italic bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-100 dark:border-blue-900/30">
-                "{job.llm_summary}"
-              </p>
-            </div>
-          )}
-
-          {/* Requirements */}
-          <div className="space-y-2">
-            <h4 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">Requirements Breakdown</h4>
-            <div className="border border-gray-100 dark:border-slate-800 rounded-lg divide-y divide-gray-100 dark:divide-slate-800">
-              {job.requirements.map((req) => (
-                <RequirementRow key={req.id} requirement={req} />
-              ))}
-              {job.requirements.length === 0 && (
-                <div className="p-4 text-center text-gray-500 dark:text-slate-400 italic">No requirements analyzed.</div>
-              )}
-            </div>
-          </div>
+          <AnalysisDetails
+            job={job}
+            onRetry={handleReanalyze}
+            retrying={reanalyzeJob.isPending}
+          />
 
           {/* Notes */}
           <div className="space-y-2">
-            <h4 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">Notes</h4>
+            <h4 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">
+              Notes
+            </h4>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
@@ -226,10 +194,14 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({ jobId, onClose }
 
           {/* Overrides */}
           <div className="space-y-4 p-4 sm:p-6 bg-white dark:bg-slate-950 rounded-xl border border-gray-200 dark:border-slate-800">
-            <h4 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">Manual Overrides</h4>
+            <h4 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">
+              Manual Overrides
+            </h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               <div>
-                <label className="block text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase mb-2">Score Override</label>
+                <label className="block text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase mb-2">
+                  Score Override
+                </label>
                 <input
                   type="number"
                   min="0"
@@ -241,30 +213,38 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({ jobId, onClose }
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase mb-2">Domain Override</label>
+                <label className="block text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase mb-2">
+                  Domain Override
+                </label>
                 <select
                   value={domainOverride}
-                  onChange={(e) => setDomainOverride(e.target.value as Domain | '')}
+                  onChange={(e) =>
+                    setDomainOverride(e.target.value as Domain | '')
+                  }
                   className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
                 >
                   <option value="">Use AI Domain</option>
-                  {Object.values(Domain).map(d => (
-                    <option key={d} value={d}>{d}</option>
+                  {Object.values(Domain).map((d) => (
+                    <option key={d} value={d}>
+                      {d}
+                    </option>
                   ))}
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase mb-2">Is Applicable</label>
+                <label className="block text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase mb-2">
+                  Is Applicable
+                </label>
                 <div className="flex items-center space-x-2 h-[42px]">
                   {(['auto', 'yes', 'no'] as const).map((opt) => (
                     <button
                       key={opt}
                       onClick={() => setIsApplicableOverride(opt)}
                       className={cn(
-                        "flex-1 px-2 py-1.5 text-xs font-bold rounded-md border transition-all capitalize",
+                        'flex-1 px-2 py-1.5 text-xs font-bold rounded-md border transition-all capitalize',
                         isApplicableOverride === opt
-                          ? "bg-blue-600 border-blue-600 text-white shadow-sm"
-                          : "bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-700 text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700"
+                          ? 'bg-blue-600 border-blue-600 text-white shadow-sm'
+                          : 'bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-700 text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700',
                       )}
                     >
                       {opt}
@@ -279,7 +259,11 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({ jobId, onClose }
                 disabled={updateJob.isPending}
                 className="flex items-center space-x-2 px-6 py-2 bg-slate-900 dark:bg-slate-700 hover:bg-slate-950 dark:hover:bg-slate-600 text-white text-sm font-bold rounded-lg transition-all shadow-[0_1px_3px_rgba(0,0,0,0.1)] disabled:opacity-50"
               >
-                {updateJob.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                {updateJob.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4" />
+                )}
                 <span>Save Changes</span>
               </button>
             </div>
