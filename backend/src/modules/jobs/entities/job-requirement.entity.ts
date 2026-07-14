@@ -32,6 +32,15 @@ export class JobRequirement {
   @Column('text')
   reasoning: string;
 
+  @Column('text', { nullable: true })
+  job_description_excerpt: string | null;
+
+  @Column('text', { nullable: true })
+  cv_evidence: string | null;
+
+  @Column('boolean', { default: false })
+  evidence_inferred: boolean;
+
   @Column('int')
   order: number;
 }

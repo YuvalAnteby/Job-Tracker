@@ -10,6 +10,9 @@ import { Domain } from '../enums/domain.enum';
 import { JobStatus } from '../enums/job-status.enum';
 import { JobRequirement } from './job-requirement.entity';
 import { Expose } from 'class-transformer';
+import { AnalysisStatus } from '../enums/analysis-status.enum';
+import { Recommendation } from '../enums/recommendation.enum';
+import type { ScoreBreakdown } from '../../llm/interfaces/job-analysis.interface';
 
 @Entity('jobs')
 export class Job {
@@ -47,8 +50,8 @@ export class Job {
   @Column('int', { nullable: true })
   score_override: number | null;
 
-  @Column('boolean')
-  llm_is_applicable: boolean;
+  @Column('boolean', { nullable: true })
+  llm_is_applicable: boolean | null;
 
   @Column('boolean', { nullable: true })
   is_applicable_override: boolean | null;
@@ -62,8 +65,9 @@ export class Job {
   @Column({
     type: 'enum',
     enum: Domain,
+    nullable: true,
   })
-  llm_domain: Domain;
+  llm_domain: Domain | null;
 
   @Column({
     type: 'enum',
@@ -72,8 +76,39 @@ export class Job {
   })
   domain_override: Domain | null;
 
-  @Column('text')
-  llm_summary: string;
+  @Column('text', { nullable: true })
+  llm_summary: string | null;
+
+  @Column('jsonb', { nullable: true })
+  score_breakdown: ScoreBreakdown | null;
+
+  @Column({
+    type: 'enum',
+    enum: Recommendation,
+    enumName: 'recommendation_enum',
+    nullable: true,
+  })
+  recommendation: Recommendation | null;
+
+  @Column({
+    type: 'enum',
+    enum: AnalysisStatus,
+    enumName: 'analysis_status_enum',
+    default: AnalysisStatus.PENDING,
+  })
+  analysis_status: AnalysisStatus;
+
+  @Column('text', { nullable: true })
+  analysis_error: string | null;
+
+  @Column('text', { nullable: true })
+  analysis_model: string | null;
+
+  @Column('text', { nullable: true })
+  prompt_version: string | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  analyzed_at: Date | null;
 
   @CreateDateColumn({ type: 'timestamptz' })
   added_at: Date;
@@ -103,11 +138,11 @@ export class Job {
 
   @Expose()
   get effective_is_applicable(): boolean {
-    return this.is_applicable_override ?? this.llm_is_applicable;
+    return this.is_applicable_override ?? this.llm_is_applicable ?? false;
   }
 
   @Expose()
   get effective_domain(): Domain {
-    return this.domain_override ?? this.llm_domain;
+    return this.domain_override ?? this.llm_domain ?? this.domain;
   }
 }

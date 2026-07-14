@@ -5,6 +5,8 @@ import {
   CreateDateColumn,
 } from 'typeorm';
 import { Domain } from '../../jobs/enums/domain.enum';
+import { AnalysisStatus } from '../../jobs/enums/analysis-status.enum';
+import type { GapSummaryResult } from '../../llm/interfaces/job-analysis.interface';
 
 @Entity('gap_summaries')
 export class GapSummary {
@@ -21,9 +23,29 @@ export class GapSummary {
   })
   domain_filter: Domain | null;
 
-  @Column('jsonb')
-  summary: any; // Type defined in spec: JSONB shape
+  @Column('jsonb', { nullable: true })
+  summary: GapSummaryResult | null;
 
   @Column('int')
   job_count: number;
+
+  @Column({
+    type: 'enum',
+    enum: AnalysisStatus,
+    enumName: 'analysis_status_enum',
+    default: AnalysisStatus.COMPLETED,
+  })
+  analysis_status: AnalysisStatus;
+
+  @Column('text', { nullable: true })
+  analysis_error: string | null;
+
+  @Column('text', { nullable: true })
+  analysis_model: string | null;
+
+  @Column('text', { nullable: true })
+  prompt_version: string | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  analyzed_at: Date | null;
 }

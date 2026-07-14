@@ -20,11 +20,36 @@ export enum MetStatus {
   UNCERTAIN = 'UNCERTAIN',
 }
 
+export enum AnalysisStatus {
+  PENDING = 'PENDING',
+  COMPLETED = 'COMPLETED',
+  FAILED = 'FAILED',
+}
+
+export enum Recommendation {
+  APPLY = 'APPLY',
+  STRETCH = 'STRETCH',
+  RESEARCH = 'RESEARCH',
+  SKIP = 'SKIP',
+}
+
+export interface ScoreBreakdown {
+  hard_requirements: number;
+  preferred_requirements: number;
+  technical_stack: number;
+  seniority_eligibility: number;
+  domain_alignment: number;
+  logistics_availability: number;
+}
+
 export interface JobRequirement {
   id: string;
   name: string;
   reasoning: string;
   met_status: MetStatus;
+  job_description_excerpt: string | null;
+  cv_evidence: string | null;
+  evidence_inferred: boolean;
 }
 
 export interface Job {
@@ -40,6 +65,13 @@ export interface Job {
   llm_is_applicable?: boolean;
   llm_domain?: Domain;
   llm_summary?: string;
+  score_breakdown: ScoreBreakdown | null;
+  recommendation: Recommendation | null;
+  analysis_status: AnalysisStatus;
+  analysis_error: string | null;
+  analysis_model: string | null;
+  prompt_version: string | null;
+  analyzed_at: string | null;
 
   // Overrides
   score_override?: number;
@@ -47,7 +79,7 @@ export interface Job {
   domain_override?: Domain;
 
   // Virtual / Derived
-  effective_score: number;
+  effective_score: number | null;
   effective_is_applicable: boolean;
   effective_domain: Domain;
 
