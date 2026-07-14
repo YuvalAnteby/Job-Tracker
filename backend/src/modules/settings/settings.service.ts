@@ -15,11 +15,23 @@ import {
   UpdateMasterCvDto,
 } from './dto/master-cv.dto';
 import { UpdateSettingsDto } from './dto/update-settings.dto';
+import { TargetProfileDto } from './dto/target-profile.dto';
 import { Setting } from './entities/setting.entity';
 import { CvRevision } from './entities/cv-revision.entity';
 
 export const AI_EXCLUDE_START = '<!-- AI-EXCLUDE-START -->';
 export const AI_EXCLUDE_END = '<!-- AI-EXCLUDE-END -->';
+
+export interface TargetProfileState {
+  revision: number;
+  profile: TargetProfileDto;
+}
+
+const EMPTY_TARGET_PROFILE: TargetProfileDto = {
+  target_domains: [],
+  target_roles: [],
+  must_have_skills: [],
+};
 
 export interface MasterCvSnapshot {
   id?: string;
@@ -143,6 +155,54 @@ export class SettingsService implements OnModuleInit {
       order: { revision: 'DESC' },
     });
     return revisions.map((revision) => this.toRevisionMetadata(revision));
+  }
+
+  async getTargetProfile(): Promise<TargetProfileState> {
+    return this.get<TargetProfileState>('target_profile_state', {
+      revision: 0,
+      profile: EMPTY_TARGET_PROFILE,
+    });
+  }
+
+  async saveTargetProfile(
+    expectedRevision: number,
+    profile: TargetProfileDto,
+  ): Promise<TargetProfileState> {
+    return this.settingRepository.manager.transaction(async (manager) => {
+      const repository = manager.getRepository(Setting);
+      const setting = await repository.findOne({
+        where: { key: 'target_profile_state' },
+        lock: { mode: 'pessimistic_write' },
+      });
+      const current = (setting?.value ?? {
+        revision: 0,
+        profile: EMPTY_TARGET_PROFILE,
+      }) as TargetProfileState;
+      if (current.revision !== expectedRevision) {
+        throw new ConflictException({
+          message: 'The target profile changed since it was loaded.',
+          current_revision: current.revision,
+        });
+      }
+      const next: TargetProfileState = {
+        revision: current.revision + 1,
+        profile: {
+          target_domains: [...new Set(profile.target_domains)],
+          target_roles: this.cleanStrings(profile.target_roles),
+          must_have_skills: this.cleanStrings(profile.must_have_skills),
+          ...(profile.seniority?.trim()
+            ? { seniority: profile.seniority.trim() }
+            : {}),
+          ...(profile.location?.trim()
+            ? { location: profile.location.trim() }
+            : {}),
+        },
+      };
+      const row = setting ?? repository.create({ key: 'target_profile_state' });
+      row.value = next;
+      await repository.save(row);
+      return next;
+    });
   }
 
   async saveMasterCv(input: UpdateMasterCvDto) {
@@ -469,6 +529,10 @@ export class SettingsService implements OnModuleInit {
     return content.trim() ? content.trim().split(/\s+/u).length : 0;
   }
 
+  private cleanStrings(values: string[]): string[] {
+    return [...new Set(values.map((value) => value.trim()).filter(Boolean))];
+  }
+
   private validDateOrNow(value: string) {
     return value && !Number.isNaN(Date.parse(value))
       ? new Date(value).toISOString()
@@ -521,6 +585,10 @@ export class SettingsService implements OnModuleInit {
       master_cv_url: '',
       master_cv_cached_text: '',
       master_cv_cached_at: '',
+      target_profile_state: {
+        revision: 0,
+        profile: EMPTY_TARGET_PROFILE,
+      } satisfies TargetProfileState,
     };
     for (const [key, value] of Object.entries(defaults)) {
       if ((await this.settingRepository.count({ where: { key } })) === 0)

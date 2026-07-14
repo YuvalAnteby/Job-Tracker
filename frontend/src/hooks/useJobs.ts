@@ -15,6 +15,8 @@ export const serializeJobFilters = (
   const params: Record<string, string> = {};
   if (filters.domains?.length) params.domains = filters.domains.join(',');
   if (filters.statuses?.length) params.statuses = filters.statuses.join(',');
+  if (filters.classifications?.length)
+    params.classifications = filters.classifications.join(',');
   if (filters.fit && filters.fit !== 'all') params.fit = filters.fit;
   if (filters.search?.trim()) params.search = filters.search.trim();
   return params;

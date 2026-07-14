@@ -44,3 +44,16 @@ export interface MasterCvUpdate {
   filename?: string;
   expected_revision: number;
 }
+
+export interface TargetProfile {
+  target_domains: Domain[];
+  target_roles: string[];
+  must_have_skills: string[];
+  seniority?: string;
+  location?: string;
+}
+
+export interface TargetProfileState {
+  revision: number;
+  profile: TargetProfile;
+}

@@ -8,6 +8,7 @@ import { Test } from '@nestjs/testing';
 import { Setting } from './entities/setting.entity';
 import { SettingsService } from './settings.service';
 import { CvRevision } from './entities/cv-revision.entity';
+import { Domain } from '../jobs/enums/domain.enum';
 
 describe('SettingsService', () => {
   let service: SettingsService;
@@ -245,14 +246,37 @@ describe('SettingsService', () => {
     expect(repository.manager.transaction).not.toHaveBeenCalled();
   });
 
+  it('updates the typed target profile with optimistic revision checking', async () => {
+    values.set('target_profile_state', {
+      revision: 0,
+      profile: { target_domains: [], target_roles: [], must_have_skills: [] },
+    });
+    const saved = await service.saveTargetProfile(0, {
+      target_domains: [Domain.BACKEND, Domain.BACKEND],
+      target_roles: [' Backend Engineer ', ''],
+      must_have_skills: ['TypeScript', 'TypeScript'],
+      seniority: ' Mid ',
+    });
+    expect(saved).toEqual({
+      revision: 1,
+      profile: {
+        target_domains: [Domain.BACKEND],
+        target_roles: ['Backend Engineer'],
+        must_have_skills: ['TypeScript'],
+        seniority: 'Mid',
+      },
+    });
+    await expect(
+      service.saveTargetProfile(0, saved.profile),
+    ).rejects.toBeInstanceOf(ConflictException);
+  });
+
   it('keeps the deprecated URL refresh endpoint writing the new state', async () => {
     values.set('master_cv_url', 'https://example.com/cv.txt');
-    global.fetch = jest
-      .fn()
-      .mockResolvedValue({
-        ok: true,
-        text: async () => 'Imported CV',
-      }) as jest.Mock;
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      text: async () => 'Imported CV',
+    }) as jest.Mock;
     const result = await service.refreshCv();
     expect(result).toMatchObject({
       message: 'CV refreshed successfully',

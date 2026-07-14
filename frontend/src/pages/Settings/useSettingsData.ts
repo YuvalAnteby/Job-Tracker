@@ -5,6 +5,8 @@ import type {
   MasterCvRevision,
   MasterCvUpdate,
   Settings,
+  TargetProfile,
+  TargetProfileState,
 } from '../../types/settings';
 
 export const useSettingsData = () => {
@@ -22,6 +24,12 @@ export const useSettingsData = () => {
     queryKey: ['settings', 'master-cv', 'history'],
     queryFn: async () =>
       (await apiClient.get<MasterCvRevision[]>('/settings/master-cv/history'))
+        .data,
+  });
+  const targetProfileQuery = useQuery({
+    queryKey: ['settings', 'target-profile'],
+    queryFn: async () =>
+      (await apiClient.get<TargetProfileState>('/settings/target-profile'))
         .data,
   });
 
@@ -68,14 +76,30 @@ export const useSettingsData = () => {
       });
     },
   });
+  const saveTargetProfile = useMutation({
+    mutationFn: async (input: {
+      expected_revision: number;
+      profile: TargetProfile;
+    }) =>
+      (
+        await apiClient.put<TargetProfileState>(
+          '/settings/target-profile',
+          input,
+        )
+      ).data,
+    onSuccess: (profile) =>
+      queryClient.setQueryData(['settings', 'target-profile'], profile),
+  });
 
   return {
     settingsQuery,
     cvQuery,
     cvHistoryQuery,
+    targetProfileQuery,
     updateSettings,
     saveCv,
     clearCv,
     restoreCv,
+    saveTargetProfile,
   };
 };

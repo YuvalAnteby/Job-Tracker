@@ -17,6 +17,7 @@ import { ApplicationStage } from '../enums/application-stage.enum';
 import { ListingState } from '../enums/listing-state.enum';
 import { UserDecision } from '../enums/user-decision.enum';
 import { ApplicationStageEvent } from './application-stage-event.entity';
+import { AnalysisClassification } from '../enums/analysis-classification.enum';
 
 @Entity('jobs')
 export class Job {
@@ -93,6 +94,22 @@ export class Job {
     nullable: true,
   })
   recommendation: Recommendation | null;
+
+  @Column({
+    type: 'enum',
+    enum: AnalysisClassification,
+    enumName: 'analysis_classification_enum',
+    nullable: true,
+  })
+  suggested_classification: AnalysisClassification | null;
+
+  @Column({
+    type: 'enum',
+    enum: AnalysisClassification,
+    enumName: 'analysis_classification_enum',
+    nullable: true,
+  })
+  classification_override: AnalysisClassification | null;
 
   @Column({
     type: 'enum',
@@ -186,5 +203,10 @@ export class Job {
   @Expose()
   get effective_domain(): Domain {
     return this.domain_override ?? this.llm_domain ?? this.domain;
+  }
+
+  @Expose()
+  get effective_classification(): AnalysisClassification | null {
+    return this.classification_override ?? this.suggested_classification;
   }
 }

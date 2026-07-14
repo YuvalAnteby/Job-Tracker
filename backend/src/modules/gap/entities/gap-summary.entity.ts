@@ -29,6 +29,15 @@ export class GapSummary {
   @Column('int')
   job_count: number;
 
+  @Column('jsonb', { default: () => "'[]'::jsonb" })
+  job_ids: string[];
+
+  @Column('int', { default: 0 })
+  profile_revision: number;
+
+  @Column('jsonb', { default: () => "'{}'::jsonb" })
+  cohort_options: Record<string, unknown>;
+
   @Column({
     type: 'enum',
     enum: AnalysisStatus,

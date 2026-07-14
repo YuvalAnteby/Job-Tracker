@@ -22,6 +22,8 @@ import { ApplicationStageEvent } from './entities/application-stage-event.entity
 import { TransitionApplicationStageDto } from './dto/transition-application-stage.dto';
 import { ApplicationStage } from './enums/application-stage.enum';
 import { JobAnalysisRevision } from './entities/job-analysis-revision.entity';
+import { AnalysisClassification } from './enums/analysis-classification.enum';
+import { Recommendation } from './enums/recommendation.enum';
 
 export interface ReanalysisComparison {
   id: string;
@@ -79,6 +81,8 @@ export class JobsService {
       llm_summary: null,
       llm_is_applicable: null,
       analysis_status: AnalysisStatus.PENDING,
+      suggested_classification: null,
+      classification_override: null,
       posted_at: createJobDto.posted_at
         ? new Date(createJobDto.posted_at)
         : null,
@@ -203,6 +207,7 @@ export class JobsService {
         llm_is_applicable: isApplicableByScore && isApplicableByDomain,
         score_breakdown: analysis.score_breakdown,
         recommendation,
+        suggested_classification: this.classificationFor(recommendation),
         analysis_status: AnalysisStatus.COMPLETED,
         analysis_error: null,
         analysis_model: result.model,
@@ -310,6 +315,12 @@ export class JobsService {
       query.andWhere(
         'COALESCE(job.domain_override, job.llm_domain) IN (:...domains)',
         { domains: filters.domains },
+      );
+    }
+    if (filters.classifications?.length) {
+      query.andWhere(
+        'COALESCE(job.classification_override, job.suggested_classification) IN (:...classifications)',
+        { classifications: filters.classifications },
       );
     }
     if (filters.fit === JobFit.APPLICABLE) {
@@ -511,5 +522,16 @@ export class JobsService {
         (requirement) => requirement.name,
       ),
     };
+  }
+
+  private classificationFor(
+    recommendation: Recommendation,
+  ): AnalysisClassification {
+    return {
+      [Recommendation.APPLY]: AnalysisClassification.TARGET,
+      [Recommendation.STRETCH]: AnalysisClassification.STRETCH,
+      [Recommendation.RESEARCH]: AnalysisClassification.RESEARCH,
+      [Recommendation.SKIP]: AnalysisClassification.IRRELEVANT,
+    }[recommendation];
   }
 }

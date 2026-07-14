@@ -2,7 +2,8 @@ import { Body, Controller, Get, Patch, Post, Put } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { MasterCvRevisionDto, UpdateMasterCvDto } from './dto/master-cv.dto';
 import { UpdateSettingsDto } from './dto/update-settings.dto';
-import { SettingsService } from './settings.service';
+import { UpdateTargetProfileDto } from './dto/target-profile.dto';
+import { SettingsService, TargetProfileState } from './settings.service';
 
 @ApiTags('settings')
 @Controller('settings')
@@ -21,6 +22,23 @@ export class SettingsController {
   })
   update(@Body() settings: UpdateSettingsDto) {
     return this.settingsService.updateSettings(settings);
+  }
+
+  @Get('target-profile')
+  @ApiOperation({ summary: 'Get the revisioned job-search target profile' })
+  getTargetProfile(): Promise<TargetProfileState> {
+    return this.settingsService.getTargetProfile();
+  }
+
+  @Put('target-profile')
+  @ApiOperation({ summary: 'Update the target profile with revision checking' })
+  updateTargetProfile(
+    @Body() input: UpdateTargetProfileDto,
+  ): Promise<TargetProfileState> {
+    return this.settingsService.saveTargetProfile(
+      input.expected_revision,
+      input.profile,
+    );
   }
 
   @Get('master-cv')

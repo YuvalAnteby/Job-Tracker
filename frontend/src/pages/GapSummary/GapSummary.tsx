@@ -3,20 +3,24 @@ import { useGapSummaryData } from './useGapSummaryData';
 import { Domain } from '../../types';
 import { RefreshCw, AlertCircle, CheckCircle2, CircleDot, Loader2, Calendar, LayoutGrid } from 'lucide-react';
 import { format } from 'date-fns';
-import { cn } from '../../utils/cn';
 
 const GapSummary: React.FC = () => {
   const [selectedDomain, setSelectedDomain] = useState<Domain | 'ALL'>('ALL');
+  const [includeResearch, setIncludeResearch] = useState(false);
   const { 
     summary, 
     isLoading, 
     isGenerating, 
     generate, 
-    refetch 
-  } = useGapSummaryData(selectedDomain === 'ALL' ? undefined : selectedDomain);
+    preview,
+    isPreviewLoading,
+  } = useGapSummaryData(
+    selectedDomain === 'ALL' ? undefined : selectedDomain,
+    includeResearch,
+  );
 
   const handleGenerate = (): void => {
-    generate(selectedDomain === 'ALL' ? undefined : selectedDomain);
+    generate();
   };
 
   if (isLoading) {
@@ -25,6 +29,7 @@ const GapSummary: React.FC = () => {
         <Loader2 className="h-8 w-8 text-blue-500 animate-spin mb-4" />
         <p className="text-gray-500 dark:text-slate-400">Loading gap analysis...</p>
       </div>
+
     );
   }
 
@@ -57,7 +62,11 @@ const GapSummary: React.FC = () => {
           
           <button
             onClick={handleGenerate}
-            disabled={isGenerating}
+            disabled={
+              isGenerating ||
+              isPreviewLoading ||
+              preview?.included_job_ids.length === 0
+            }
             className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors dark:bg-blue-500 dark:hover:bg-blue-600"
           >
             {isGenerating ? (
@@ -69,6 +78,36 @@ const GapSummary: React.FC = () => {
           </button>
         </div>
       </div>
+
+      <section className="rounded-lg border border-gray-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900" aria-label="Gap cohort preview">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="font-semibold text-gray-900 dark:text-white">Analysis cohort</h2>
+            <p className="text-sm text-gray-500 dark:text-slate-400">
+              {isPreviewLoading
+                ? 'Calculating included jobs…'
+                : `${preview?.included_job_ids.length ?? 0} jobs included · profile revision ${preview?.profile_revision ?? 0}`}
+            </p>
+          </div>
+          <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-slate-300">
+            <input type="checkbox" checked={includeResearch} onChange={(event) => setIncludeResearch(event.target.checked)} />
+            Include research jobs
+          </label>
+        </div>
+        {!isPreviewLoading && preview?.included_job_ids.length === 0 && (
+          <p className="mt-3 rounded-md bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
+            No jobs match this cohort. Change the domain, classification, or gap-inclusion setting before generating.
+          </p>
+        )}
+        {preview && preview.excluded.length > 0 && (
+          <details className="mt-3 text-sm text-gray-500 dark:text-slate-400">
+            <summary className="cursor-pointer">Why {preview.excluded.length} jobs are excluded</summary>
+            <ul className="mt-2 space-y-1">
+              {preview.excluded.map((job) => <li key={job.id}><span className="font-mono text-xs">{job.id}</span> — {job.reason}</li>)}
+            </ul>
+          </details>
+        )}
+      </section>
 
       {!summary ? (
         <div className="bg-white dark:bg-slate-900 rounded-lg border border-gray-200 dark:border-slate-800 p-12 text-center">
