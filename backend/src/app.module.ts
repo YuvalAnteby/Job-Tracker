@@ -20,7 +20,7 @@ import { TelegramModule } from './modules/telegram/telegram.module';
         type: 'postgres',
         url: configService.get<string>('DATABASE_URL'),
         autoLoadEntities: true,
-        synchronize: true, // synchronize: true is intentional during MVP
+        synchronize: false,
       }),
     }),
     JobsModule,
