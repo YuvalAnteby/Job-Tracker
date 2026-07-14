@@ -2,6 +2,7 @@ import { Transform } from 'class-transformer';
 import { IsEnum, IsOptional, IsString } from 'class-validator';
 import { Domain } from '../enums/domain.enum';
 import { JobStatus } from '../enums/job-status.enum';
+import { AnalysisClassification } from '../enums/analysis-classification.enum';
 
 export enum JobFit {
   ALL = 'all',
@@ -27,6 +28,11 @@ export class FindJobsQueryDto {
   @IsEnum(JobStatus, { each: true })
   @IsOptional()
   statuses?: JobStatus[];
+
+  @Transform(split)
+  @IsEnum(AnalysisClassification, { each: true })
+  @IsOptional()
+  classifications?: AnalysisClassification[];
 
   @IsEnum(JobFit)
   @IsOptional()

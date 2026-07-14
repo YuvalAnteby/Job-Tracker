@@ -7,7 +7,12 @@ import {
   getSortedRowModel,
 } from '@tanstack/react-table';
 import type { SortingState, RowSelectionState } from '@tanstack/react-table';
-import { ApplicationStage, JobStatus, ListingState } from '../types';
+import {
+  AnalysisClassification,
+  ApplicationStage,
+  JobStatus,
+  ListingState,
+} from '../types';
 import type { Job, JobFilters } from '../types';
 import {
   useBulkJobs,
@@ -147,6 +152,31 @@ export const Dashboard: React.FC = () => {
       columnHelper.accessor('effective_domain', {
         header: 'Domain',
         cell: (info) => <DomainTag domain={info.getValue()} />,
+      }),
+      columnHelper.accessor('effective_classification', {
+        header: 'Classification',
+        cell: ({ getValue, row }) => (
+          <select
+            aria-label={`Classification for ${row.original.company_name}`}
+            value={getValue() ?? ''}
+            onClick={(event) => event.stopPropagation()}
+            onChange={(event) =>
+              updateJob.mutate({
+                id: row.original.id,
+                classification_override: event.target
+                  .value as AnalysisClassification,
+              })
+            }
+            className="rounded border border-slate-200 bg-transparent px-2 py-1 text-xs dark:border-slate-700"
+          >
+            <option value="" disabled>Unclassified</option>
+            {Object.values(AnalysisClassification).map((classification) => (
+              <option key={classification} value={classification}>
+                {classification}
+              </option>
+            ))}
+          </select>
+        ),
       }),
       columnHelper.accessor('status', {
         header: 'Status',

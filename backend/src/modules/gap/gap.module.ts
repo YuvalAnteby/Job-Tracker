@@ -6,12 +6,14 @@ import { GapService } from './gap.service';
 import { GapController } from './gap.controller';
 import { LlmModule } from '../llm/llm.module';
 import { TelegramModule } from '../telegram/telegram.module';
+import { SettingsModule } from '../settings/settings.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([GapSummary, Job]),
     LlmModule,
     forwardRef(() => TelegramModule),
+    SettingsModule,
   ],
   controllers: [GapController],
   providers: [GapService],

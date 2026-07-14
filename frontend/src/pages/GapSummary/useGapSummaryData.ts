@@ -1,6 +1,7 @@
-import { useQuery, useMutation, useQueryClient, UseQueryResult } from '@tanstack/react-query';
+import { useQuery, useMutation, UseQueryResult } from '@tanstack/react-query';
 import { apiClient } from '../../api/client';
 import { GapSummary, Domain } from '../../types';
+import type { CohortPreview } from '../../types';
 import toast from 'react-hot-toast';
 
 interface UseGapSummaryDataReturn {
@@ -9,11 +10,16 @@ interface UseGapSummaryDataReturn {
   isError: boolean;
   error: Error | null;
   refetch: () => Promise<UseQueryResult<GapSummary | null, Error>>;
-  generate: (domainFilter?: Domain) => void;
+  generate: () => void;
   isGenerating: boolean;
+  preview: CohortPreview | undefined;
+  isPreviewLoading: boolean;
 }
 
-export function useGapSummaryData(domain?: Domain): UseGapSummaryDataReturn {
+export function useGapSummaryData(
+  domain?: Domain,
+  includeResearch = false,
+): UseGapSummaryDataReturn {
   const query = useQuery({
     queryKey: ['gap-summary', domain],
     queryFn: async () => {
@@ -23,11 +29,21 @@ export function useGapSummaryData(domain?: Domain): UseGapSummaryDataReturn {
       return response.data;
     },
   });
+  const previewQuery = useQuery({
+    queryKey: ['gap-cohort-preview', domain, includeResearch],
+    queryFn: async () =>
+      (
+        await apiClient.get<CohortPreview>('/gap/preview', {
+          params: { domain_filter: domain, include_research: includeResearch },
+        })
+      ).data,
+  });
 
   const generateMutation = useMutation({
-    mutationFn: async (domainFilter?: Domain) => {
+    mutationFn: async () => {
       const response = await apiClient.post('/gap/generate', {
-        domain_filter: domainFilter,
+        domain_filter: domain,
+        include_research: includeResearch,
       });
       return response.data;
     },
@@ -49,5 +65,7 @@ export function useGapSummaryData(domain?: Domain): UseGapSummaryDataReturn {
     refetch: query.refetch,
     generate: generateMutation.mutate,
     isGenerating: generateMutation.isPending,
+    preview: previewQuery.data,
+    isPreviewLoading: previewQuery.isLoading,
   };
 }
