@@ -4,10 +4,28 @@ import { Repository, IsNull } from 'typeorm';
 import { GapSummary } from './entities/gap-summary.entity';
 import { Job } from '../jobs/entities/job.entity';
 import { Domain } from '../jobs/enums/domain.enum';
-import { JobStatus } from '../jobs/enums/job-status.enum';
 import { LlmService } from '../llm/llm.service';
 import { JobSummaryInput } from '../llm/interfaces/job-analysis.interface';
 import { TelegramService } from '../telegram/telegram.service';
+import { AnalysisStatus } from '../jobs/enums/analysis-status.enum';
+import { AnalysisClassification } from '../jobs/enums/analysis-classification.enum';
+import { SettingsService } from '../settings/settings.service';
+
+export interface CohortOptions {
+  domain_filter?: Domain;
+  include_research?: boolean;
+}
+
+export interface CohortPreview {
+  included_job_ids: string[];
+  excluded: { id: string; reason: string }[];
+  profile_revision: number;
+  options: { domain_filter: Domain | null; include_research: boolean };
+}
+
+interface CohortSelection extends CohortPreview {
+  jobs: Job[];
+}
 
 @Injectable()
 export class GapService {
@@ -21,45 +39,37 @@ export class GapService {
     private readonly llmService: LlmService,
     @Inject(forwardRef(() => TelegramService))
     private readonly telegramService: TelegramService,
+    private readonly settingsService: SettingsService,
   ) {}
 
-  generate(domainFilter?: Domain): void {
-    // Run in background
+  async generate(options: CohortOptions = {}): Promise<CohortPreview> {
+    const cohort = await this.selectCohort(options);
+    if (!cohort.jobs.length) return this.toPreview(cohort);
     setImmediate(() => {
-      this.processGapAnalysis(domainFilter).catch((error: unknown) => {
+      this.processGapAnalysis(cohort).catch((error: unknown) => {
         const message = error instanceof Error ? error.message : String(error);
         this.logger.error(
           `Unhandled error in background gap analysis: ${message}`,
         );
       });
     });
+    return this.toPreview(cohort);
   }
 
-  private async processGapAnalysis(domainFilter?: Domain): Promise<void> {
+  async preview(options: CohortOptions = {}): Promise<CohortPreview> {
+    return this.toPreview(await this.selectCohort(options));
+  }
+
+  private async processGapAnalysis(cohort: CohortSelection): Promise<void> {
+    const domainFilter = cohort.options.domain_filter ?? undefined;
     this.logger.log(
       `Starting gap analysis background job${domainFilter ? ` for domain: ${domainFilter}` : ''}`,
     );
 
+    let jobCount = 0;
     try {
-      // 1. Fetch relevant jobs
-      const queryBuilder = this.jobRepository
-        .createQueryBuilder('job')
-        .leftJoinAndSelect('job.requirements', 'requirement')
-        .where('job.status = :status', { status: JobStatus.ACTIVE });
-
-      if (domainFilter) {
-        queryBuilder.andWhere(
-          'COALESCE(job.domain_override, job.llm_domain) = :domain',
-          { domain: domainFilter },
-        );
-      }
-
-      const jobs = await queryBuilder.getMany();
-
-      if (jobs.length === 0) {
-        this.logger.warn('No active jobs found for gap analysis.');
-        return;
-      }
+      const jobs = cohort.jobs;
+      jobCount = jobs.length;
 
       // 2. Map to JobSummaryInput
       const jobSummaries: JobSummaryInput[] = jobs.map((job) => ({
@@ -80,8 +90,16 @@ export class GapService {
       // 4. Save to DB
       const gapSummary = this.gapSummaryRepository.create({
         domain_filter: domainFilter || null,
-        summary: summaryResult,
+        summary: summaryResult.data,
         job_count: jobs.length,
+        job_ids: cohort.included_job_ids,
+        profile_revision: cohort.profile_revision,
+        cohort_options: cohort.options,
+        analysis_status: AnalysisStatus.COMPLETED,
+        analysis_error: null,
+        analysis_model: summaryResult.model,
+        prompt_version: summaryResult.prompt_version,
+        analyzed_at: summaryResult.analyzed_at,
       });
 
       await this.gapSummaryRepository.save(gapSummary);
@@ -92,17 +110,72 @@ export class GapService {
       // 5. Notify via Telegram
       await this.notifyViaTelegram(gapSummary);
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : String(error);
-      const stack = error instanceof Error ? error.stack : undefined;
-      this.logger.error(
-        `Error during background gap analysis: ${message}`,
-        stack,
+      const message =
+        error instanceof Error && error.name === 'InvalidLlmOutputError'
+          ? error.message
+          : 'AI provider request failed';
+      this.logger.error(`Error during background gap analysis: ${message}`);
+      await this.gapSummaryRepository.save(
+        this.gapSummaryRepository.create({
+          domain_filter: domainFilter || null,
+          summary: null,
+          job_count: jobCount,
+          job_ids: cohort.included_job_ids,
+          profile_revision: cohort.profile_revision,
+          cohort_options: cohort.options,
+          analysis_status: AnalysisStatus.FAILED,
+          analysis_error: message.replace(/[\r\n]+/g, ' ').slice(0, 500),
+          analysis_model: null,
+          prompt_version: null,
+          analyzed_at: new Date(),
+        }),
       );
     }
   }
 
+  private async selectCohort(options: CohortOptions): Promise<CohortSelection> {
+    const jobs = await this.jobRepository.find({ relations: ['requirements'] });
+    const profile = await this.settingsService.getTargetProfile();
+    const normalized = {
+      domain_filter: options.domain_filter ?? null,
+      include_research: options.include_research ?? false,
+    };
+    const included: Job[] = [];
+    const excluded: { id: string; reason: string }[] = [];
+    for (const job of jobs) {
+      const classification = job.effective_classification;
+      const reason = !job.include_in_gap
+        ? 'Excluded from gap analysis'
+        : normalized.domain_filter &&
+            job.effective_domain !== normalized.domain_filter
+          ? 'Outside selected domain'
+          : classification === AnalysisClassification.IRRELEVANT
+            ? 'Classified as irrelevant'
+            : classification === AnalysisClassification.RESEARCH &&
+                !normalized.include_research
+              ? 'Research jobs require opt-in'
+              : null;
+      if (reason) excluded.push({ id: job.id, reason });
+      else included.push(job);
+    }
+    return {
+      jobs: included,
+      included_job_ids: included.map((job) => job.id),
+      excluded,
+      profile_revision: profile.revision,
+      options: normalized,
+    };
+  }
+
+  private toPreview(selection: CohortSelection): CohortPreview {
+    const { jobs: _jobs, ...preview } = selection;
+    void _jobs;
+    return preview;
+  }
+
   private async notifyViaTelegram(gapSummary: GapSummary): Promise<void> {
     const { summary, domain_filter, job_count } = gapSummary;
+    if (!summary) return;
     const domainLabel = domain_filter || 'All Domains';
 
     let message = `✅ <b>Gap Analysis Ready</b> (${domainLabel} · ${job_count} jobs)\n\n`;
@@ -127,7 +200,7 @@ export class GapService {
       if (data.partially_known?.length > 0) {
         message += `🟡 <b>Partial:</b> ${data.partially_known.join(', ')}\n`;
       }
-      
+
       message += `\n`;
     });
 
@@ -143,7 +216,10 @@ export class GapService {
 
   async getLatest(domainFilter?: Domain): Promise<GapSummary | null> {
     return this.gapSummaryRepository.findOne({
-      where: { domain_filter: domainFilter ?? IsNull() },
+      where: {
+        domain_filter: domainFilter ?? IsNull(),
+        analysis_status: AnalysisStatus.COMPLETED,
+      },
       order: { generated_at: 'DESC' },
     });
   }

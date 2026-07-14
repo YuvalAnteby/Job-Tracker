@@ -1,6 +1,16 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, ShieldAlert, Settings, PlusCircle, Briefcase, Menu, X } from 'lucide-react';
+import {
+  LayoutDashboard,
+  ShieldAlert,
+  Settings,
+  PlusCircle,
+  Briefcase,
+  Menu,
+  X,
+  Columns3,
+  BookOpen,
+} from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { AddJobModal } from '../dashboard/AddJobModal';
 
@@ -15,6 +25,8 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
 
   const navigation = [
     { name: 'Dashboard', href: '/', icon: LayoutDashboard },
+    { name: 'Pipeline', href: '/pipeline', icon: Columns3 },
+    { name: 'Skills', href: '/skills', icon: BookOpen },
     { name: 'Gap Summary', href: '/gap', icon: ShieldAlert },
     { name: 'Settings', href: '/settings', icon: Settings },
   ];
@@ -40,10 +52,12 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               </button>
               <div className="flex items-center space-x-2">
                 <Briefcase className="h-8 w-8 text-blue-600 dark:text-blue-500" />
-                <span className="text-xl font-bold text-gray-900 dark:text-white hidden sm:block">Job Tracker</span>
+                <span className="text-xl font-bold text-gray-900 dark:text-white hidden sm:block">
+                  Job Tracker
+                </span>
               </div>
             </div>
-            
+
             <nav className="hidden md:flex space-x-8">
               {navigation.map((item) => {
                 const isActive = location.pathname === item.href;
@@ -52,10 +66,10 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                     key={item.name}
                     to={item.href}
                     className={cn(
-                      "flex items-center px-1 pt-1 text-sm font-medium border-b-2 transition-colors",
+                      'flex items-center px-1 pt-1 text-sm font-medium border-b-2 transition-colors',
                       isActive
-                        ? "border-blue-500 text-gray-900 dark:text-white"
-                        : "border-transparent text-gray-500 dark:text-slate-400 hover:border-gray-300 dark:hover:border-slate-700 hover:text-gray-700 dark:hover:text-slate-200"
+                        ? 'border-blue-500 text-gray-900 dark:text-white'
+                        : 'border-transparent text-gray-500 dark:text-slate-400 hover:border-gray-300 dark:hover:border-slate-700 hover:text-gray-700 dark:hover:text-slate-200',
                     )}
                   >
                     <item.icon className="h-4 w-4 mr-2" />
@@ -90,10 +104,10 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                     to={item.href}
                     onClick={() => setIsMobileMenuOpen(false)}
                     className={cn(
-                      "flex items-center px-3 py-2 rounded-md text-base font-medium",
+                      'flex items-center px-3 py-2 rounded-md text-base font-medium',
                       isActive
-                        ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
-                        : "text-gray-700 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-slate-800"
+                        ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                        : 'text-gray-700 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-slate-800',
                     )}
                   >
                     <item.icon className="h-5 w-5 mr-3" />
@@ -110,7 +124,10 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         {children}
       </main>
 
-      <AddJobModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} />
+      <AddJobModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+      />
 
       <footer className="bg-white dark:bg-slate-900 border-t border-gray-200 dark:border-slate-800 py-4 mt-auto">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-sm text-gray-500 dark:text-slate-400">

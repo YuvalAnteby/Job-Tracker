@@ -1,15 +1,22 @@
 import { LlmService } from './llm.service';
+import { SettingsService } from '../settings/settings.service';
+import { GeminiProvider } from './providers/gemini.provider';
 
 describe('LlmService master CV integration', () => {
   it('uses the authoritative current CV for job analysis', async () => {
     const settings = {
-      get: jest.fn(async (key: string) => key === 'llm_provider' ? 'gemini' : 'gemini-2.5-flash'),
-      getMasterCvText: jest.fn(async () => 'Current editable CV'),
+      get: jest.fn((key: string) =>
+        Promise.resolve(key === 'llm_provider' ? 'gemini' : 'gemini-2.5-flash'),
+      ),
+      getMasterCvText: jest.fn().mockResolvedValue('Current editable CV'),
     };
     const gemini = {
-      analyzeJob: jest.fn(async () => ({ score: 90 })),
+      analyzeJob: jest.fn().mockResolvedValue({ score: 90 }),
     };
-    const service = new LlmService(settings as any, gemini as any);
+    const service = new LlmService(
+      settings as unknown as SettingsService,
+      gemini as unknown as GeminiProvider,
+    );
 
     await service.analyzeJob('Job description');
 

@@ -7,18 +7,28 @@ import { MainLayout } from './components/layout/MainLayout';
 import { Dashboard } from './pages/Dashboard';
 import GapSummary from './pages/GapSummary/GapSummary';
 import Settings from './pages/Settings/Settings';
+import Pipeline from './pages/Pipeline/Pipeline';
+import Skills from './pages/Skills/Skills';
 
 // Placeholder components for routes
 const JobDetail = () => <div className="text-2xl font-bold">Job Detail</div>;
-const NotFound = () => <div className="text-2xl font-bold">404 - Not Found</div>;
+const NotFound = () => (
+  <div className="text-2xl font-bold">404 - Not Found</div>
+);
 
 const router = createBrowserRouter([
   {
-    element: <MainLayout><Outlet /></MainLayout>,
+    element: (
+      <MainLayout>
+        <Outlet />
+      </MainLayout>
+    ),
     children: [
       { path: '/', element: <Dashboard /> },
       { path: '/jobs/:id', element: <JobDetail /> },
       { path: '/gap', element: <GapSummary /> },
+      { path: '/pipeline', element: <Pipeline /> },
+      { path: '/skills', element: <Skills /> },
       { path: '/settings', element: <Settings /> },
       { path: '*', element: <NotFound /> },
     ],

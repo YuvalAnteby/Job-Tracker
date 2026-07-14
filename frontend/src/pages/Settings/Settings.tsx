@@ -14,15 +14,21 @@ import {
 } from 'lucide-react';
 import { useBeforeUnload, useBlocker, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { useForm } from 'react-hook-form';
 import { Domain } from '../../types';
-import type { MasterCv, Settings as SettingsType } from '../../types/settings';
+import type {
+  MasterCv,
+  Settings as SettingsType,
+  TargetProfile,
+} from '../../types/settings';
 import { cn } from '../../utils/cn';
 import { countCvWords, decodeCvFile, MASTER_CV_MAX_BYTES } from './cvFile';
 import { useSettingsData } from './useSettingsData';
 
-type Section = 'cv' | 'analysis' | 'domains' | 'integrations';
+type Section = 'cv' | 'target' | 'analysis' | 'domains' | 'integrations';
 const sections: { id: Section; label: string; description: string; icon: typeof FileText }[] = [
   { id: 'cv', label: 'Master CV', description: 'Analysis baseline', icon: FileText },
+  { id: 'target', label: 'Target Profile', description: 'Search direction', icon: Target },
   { id: 'analysis', label: 'Analysis', description: 'Scoring and model', icon: Bot },
   { id: 'domains', label: 'Target Domains', description: 'Classification rules', icon: Target },
   { id: 'integrations', label: 'Integrations', description: 'Telegram access', icon: Bell },
@@ -86,6 +92,7 @@ export default function Settings() {
         </nav>
         <main className="min-w-0">
           {section === 'cv' && <MasterCvSection onDirtyChange={setCvDirty} />}
+          {section === 'target' && <TargetProfileSection />}
           {section === 'analysis' && <AnalysisSection />}
           {section === 'domains' && <DomainsSection />}
           {section === 'integrations' && <IntegrationsSection />}
@@ -93,6 +100,83 @@ export default function Settings() {
       </div>
     </div>
   );
+}
+
+interface TargetProfileForm {
+  target_roles: string;
+  must_have_skills: string;
+  seniority: string;
+  location: string;
+  target_domains: Domain[];
+}
+
+function TargetProfileSection(): React.JSX.Element {
+  const { targetProfileQuery, saveTargetProfile } = useSettingsData();
+  const { register, handleSubmit, reset, watch, setValue, formState } =
+    useForm<TargetProfileForm>({
+      defaultValues: {
+        target_roles: '',
+        must_have_skills: '',
+        seniority: '',
+        location: '',
+        target_domains: [],
+      },
+    });
+  useEffect(() => {
+    const profile = targetProfileQuery.data?.profile;
+    if (!profile) return;
+    reset({
+      ...profile,
+      target_roles: profile.target_roles.join(', '),
+      must_have_skills: profile.must_have_skills.join(', '),
+      seniority: profile.seniority ?? '',
+      location: profile.location ?? '',
+    });
+  }, [reset, targetProfileQuery.data]);
+  if (targetProfileQuery.isLoading) return <LoadingState />;
+  if (targetProfileQuery.isError || !targetProfileQuery.data)
+    return <ErrorState retry={() => void targetProfileQuery.refetch()} />;
+  const domains = watch('target_domains');
+  const split = (value: string) =>
+    value.split(',').map((item) => item.trim()).filter(Boolean);
+  const submit = (form: TargetProfileForm) => {
+    const profile: TargetProfile = {
+      ...form,
+      target_roles: split(form.target_roles),
+      must_have_skills: split(form.must_have_skills),
+      seniority: form.seniority || undefined,
+      location: form.location || undefined,
+    };
+    saveTargetProfile.mutate(
+      {
+        expected_revision: targetProfileQuery.data!.revision,
+        profile,
+      },
+      {
+        onSuccess: (saved) => {
+          reset({
+            ...saved.profile,
+            target_roles: saved.profile.target_roles.join(', '),
+            must_have_skills: saved.profile.must_have_skills.join(', '),
+            seniority: saved.profile.seniority ?? '',
+            location: saved.profile.location ?? '',
+          });
+          toast.success('Target profile saved');
+        },
+        onError: () => {
+          void targetProfileQuery.refetch();
+          toast.error('Target profile changed or could not be saved');
+        },
+      },
+    );
+  };
+  return <section><SectionHeader title="Target Profile" description="Define the roles used to interpret recommendations and record the profile revision behind every gap cohort." /><form className="max-w-2xl space-y-5" onSubmit={handleSubmit(submit)}>
+    <div><span className="mb-2 block text-sm font-medium">Target domains</span><div className="flex flex-wrap gap-2">{Object.values(Domain).map((domain) => <button key={domain} type="button" onClick={() => setValue('target_domains', domains.includes(domain) ? domains.filter((item) => item !== domain) : [...domains, domain], { shouldDirty: true })} className={cn('rounded-md border px-3 py-1.5 text-xs font-semibold', domains.includes(domain) ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-300 dark:border-slate-700')}>{domain}</button>)}</div></div>
+    <div><label htmlFor="target-roles" className="mb-2 block text-sm font-medium">Target roles</label><input id="target-roles" className={inputClass} {...register('target_roles')} placeholder="Backend Engineer, Platform Engineer" /><p className="mt-1 text-xs text-slate-500">Comma-separated.</p></div>
+    <div><label htmlFor="target-skills" className="mb-2 block text-sm font-medium">Must-have skills</label><input id="target-skills" className={inputClass} {...register('must_have_skills')} placeholder="TypeScript, PostgreSQL" /></div>
+    <div className="grid gap-4 sm:grid-cols-2"><div><label htmlFor="target-seniority" className="mb-2 block text-sm font-medium">Seniority</label><input id="target-seniority" className={inputClass} {...register('seniority')} /></div><div><label htmlFor="target-location" className="mb-2 block text-sm font-medium">Location</label><input id="target-location" className={inputClass} {...register('location')} /></div></div>
+    <div className="border-t border-slate-200 pt-4 dark:border-slate-800"><button className={primaryButton} disabled={!formState.isDirty || saveTargetProfile.isPending} type="submit"><Save className="h-4 w-4" />Save target profile</button><span className="ml-3 text-xs text-slate-500">Revision {targetProfileQuery.data.revision}</span></div>
+  </form></section>;
 }
 
 function SectionHeader({ title, description }: { title: string; description: string }) {
