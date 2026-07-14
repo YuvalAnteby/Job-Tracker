@@ -14,8 +14,9 @@ import { CreateJobDto } from './dto/create-job.dto';
 import { UpdateJobDto } from './dto/update-job.dto';
 import { FindJobsQueryDto } from './dto/find-jobs-query.dto';
 import { BulkJobIdsDto, BulkUpdateJobStatusDto } from './dto/bulk-jobs.dto';
-import { Job } from './entities/job.entity';
 import { BulkJobsResult } from './jobs.service';
+import { TransitionApplicationStageDto } from './dto/transition-application-stage.dto';
+import { Job } from './entities/job.entity';
 
 @ApiTags('jobs')
 @Controller('jobs')
@@ -87,5 +88,15 @@ export class JobsController {
   @ApiResponse({ status: 200, description: 'Per-job bulk delete result.' })
   bulkRemove(@Body() body: BulkJobIdsDto): Promise<BulkJobsResult> {
     return this.jobsService.bulkRemove(body.ids);
+  }
+
+  @Post(':id/application-stage')
+  @ApiOperation({ summary: 'Transition application stage and append history' })
+  @ApiResponse({ status: 201, description: 'Application stage transitioned.' })
+  transitionApplicationStage(
+    @Param('id') id: string,
+    @Body() dto: TransitionApplicationStageDto,
+  ): Promise<Job> {
+    return this.jobsService.transitionApplicationStage(id, dto);
   }
 }

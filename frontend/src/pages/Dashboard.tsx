@@ -7,13 +7,14 @@ import {
   getSortedRowModel,
 } from '@tanstack/react-table';
 import type { SortingState, RowSelectionState } from '@tanstack/react-table';
-import { JobStatus } from '../types';
+import { ApplicationStage, JobStatus, ListingState } from '../types';
 import type { Job, JobFilters } from '../types';
 import {
   useBulkJobs,
   useJobs,
-  useUpdateJobStatus,
   useDeleteJob,
+  useTransitionApplicationStage,
+  useUpdateJob,
 } from '../hooks/useJobs';
 import {
   ScoreBadge,
@@ -48,7 +49,8 @@ export const Dashboard: React.FC = () => {
   );
 
   const { data: jobs = [], isLoading } = useJobs(filters);
-  const updateStatus = useUpdateJobStatus();
+  const transitionStage = useTransitionApplicationStage();
+  const updateJob = useUpdateJob();
   const deleteJob = useDeleteJob();
   const bulkJobs = useBulkJobs();
 
@@ -189,14 +191,15 @@ export const Dashboard: React.FC = () => {
               </button>
               <button
                 onClick={() =>
-                  updateStatus.mutate(
-                    { id: job.id, status: JobStatus.APPLIED },
+                  transitionStage.mutate(
+                    { id: job.id, new_stage: ApplicationStage.APPLIED },
                     {
                       onSuccess: () => toast.success('Job marked applied'),
                       onError: () => toast.error('Could not update job'),
                     },
                   )
                 }
+                disabled={job.application_stage !== ApplicationStage.NOT_APPLIED}
                 className="p-1 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors text-blue-600 dark:text-blue-400"
                 title="Mark Applied"
               >
@@ -204,16 +207,16 @@ export const Dashboard: React.FC = () => {
               </button>
               <button
                 onClick={() =>
-                  updateStatus.mutate(
-                    { id: job.id, status: JobStatus.INACTIVE },
+                  updateJob.mutate(
+                    { id: job.id, listing_state: ListingState.CLOSED },
                     {
-                      onSuccess: () => toast.success('Job marked inactive'),
+                      onSuccess: () => toast.success('Listing closed'),
                       onError: () => toast.error('Could not update job'),
                     },
                   )
                 }
                 className="p-1 hover:bg-gray-100 dark:hover:bg-slate-800 rounded transition-colors text-gray-400 dark:text-slate-500"
-                title="Mark Inactive"
+                title="Close Listing"
               >
                 <XCircle className="h-4 w-4" />
               </button>
@@ -236,7 +239,7 @@ export const Dashboard: React.FC = () => {
         },
       }),
     ],
-    [updateStatus, deleteJob, selectedJobId],
+    [transitionStage, updateJob, deleteJob, selectedJobId],
   );
 
   const table = useReactTable({

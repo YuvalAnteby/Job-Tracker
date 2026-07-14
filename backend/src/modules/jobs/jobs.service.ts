@@ -3,9 +3,10 @@ import {
   ConflictException,
   NotFoundException,
   Logger,
+  BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Brackets, Repository } from 'typeorm';
+import { Brackets, DataSource, Repository } from 'typeorm';
 import { Job } from './entities/job.entity';
 import { JobRequirement } from './entities/job-requirement.entity';
 import { CreateJobDto } from './dto/create-job.dto';
@@ -17,6 +18,9 @@ import { JobStatus } from './enums/job-status.enum';
 import { AnalysisStatus } from './enums/analysis-status.enum';
 import { Domain } from './enums/domain.enum';
 import { calculateScore, recommend } from './job-scoring';
+import { ApplicationStageEvent } from './entities/application-stage-event.entity';
+import { TransitionApplicationStageDto } from './dto/transition-application-stage.dto';
+import { ApplicationStage } from './enums/application-stage.enum';
 
 export interface BulkJobsResult {
   succeeded: string[];
@@ -34,6 +38,7 @@ export class JobsService {
     private readonly requirementRepository: Repository<JobRequirement>,
     private readonly llmService: LlmService,
     private readonly settingsService: SettingsService,
+    private readonly dataSource: DataSource,
   ) {}
 
   async create(createJobDto: CreateJobDto): Promise<Job> {
@@ -60,6 +65,13 @@ export class JobsService {
       posted_at: createJobDto.posted_at
         ? new Date(createJobDto.posted_at)
         : null,
+      posting_snapshot: {
+        company_name: createJobDto.company_name,
+        title: createJobDto.title,
+        url: createJobDto.url,
+        description: createJobDto.description,
+        posted_at: createJobDto.posted_at ?? null,
+      },
     });
 
     await this.jobRepository.save(job);
@@ -175,7 +187,9 @@ export class JobsService {
     const query = this.jobRepository
       .createQueryBuilder('job')
       .leftJoinAndSelect('job.requirements', 'requirement')
-      .orderBy('job.added_at', 'DESC');
+      .leftJoinAndSelect('job.application_events', 'application_event')
+      .orderBy('job.added_at', 'DESC')
+      .addOrderBy('application_event.occurred_at', 'ASC');
     const statuses = filters.statuses ?? [];
     const storedStatuses = statuses.filter(
       (status) => status !== JobStatus.DELETED,
@@ -229,7 +243,8 @@ export class JobsService {
   async findOne(id: string): Promise<Job> {
     const job = await this.jobRepository.findOne({
       where: { id },
-      relations: ['requirements'],
+      relations: ['requirements', 'application_events'],
+      order: { application_events: { occurred_at: 'ASC' } },
     });
 
     if (!job) {
@@ -267,7 +282,7 @@ export class JobsService {
   async remove(id: string): Promise<Job> {
     const job = await this.jobRepository.findOne({
       where: { id },
-      relations: ['requirements'],
+      relations: ['requirements', 'application_events'],
       withDeleted: true,
     });
     if (!job) throw new NotFoundException(`Job with ID ${id} not found`);
@@ -308,6 +323,84 @@ export class JobsService {
         return result;
       },
       { succeeded: [], failed: [] },
+    );
+  }
+
+  async transitionApplicationStage(
+    id: string,
+    dto: TransitionApplicationStageDto,
+  ): Promise<Job> {
+    return this.dataSource.transaction(async (manager) => {
+      const jobs = manager.getRepository(Job);
+      const job = await jobs.findOne({
+        where: { id },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!job) throw new NotFoundException(`Job with ID ${id} not found`);
+
+      const isDateCorrection =
+        job.application_stage === dto.new_stage && dto.applied_at !== undefined;
+      if (job.application_stage === dto.new_stage && !isDateCorrection) {
+        throw new BadRequestException(
+          'Job is already at that application stage',
+        );
+      }
+      if (!this.canTransition(job.application_stage, dto.new_stage)) {
+        throw new BadRequestException(
+          `Cannot move from ${job.application_stage} to ${dto.new_stage}`,
+        );
+      }
+
+      const occurredAt = dto.occurred_at ?? new Date();
+      const event = manager.getRepository(ApplicationStageEvent).create({
+        job_id: job.id,
+        previous_stage: job.application_stage,
+        new_stage: dto.new_stage,
+        occurred_at: occurredAt,
+        source: dto.source || 'WEB',
+        notes: dto.notes || null,
+        rejection_reason: dto.rejection_reason || null,
+      });
+      await manager.getRepository(ApplicationStageEvent).save(event);
+
+      job.application_stage = dto.new_stage;
+      if (dto.applied_at !== undefined) {
+        job.applied_at = dto.applied_at;
+      } else if (
+        dto.new_stage === ApplicationStage.APPLIED &&
+        job.applied_at === null
+      ) {
+        job.applied_at = occurredAt;
+      }
+      await jobs.save(job);
+
+      return jobs.findOneOrFail({
+        where: { id },
+        relations: ['requirements', 'application_events'],
+        order: { application_events: { occurred_at: 'ASC' } },
+      });
+    });
+  }
+
+  private canTransition(from: ApplicationStage, to: ApplicationStage): boolean {
+    if (from === to) return true;
+    if (from === ApplicationStage.NOT_APPLIED) {
+      return to === ApplicationStage.APPLIED;
+    }
+    if (
+      from === ApplicationStage.REJECTED ||
+      from === ApplicationStage.WITHDRAWN
+    ) {
+      return (
+        to === ApplicationStage.NOT_APPLIED || to === ApplicationStage.APPLIED
+      );
+    }
+    if (to === ApplicationStage.REJECTED || to === ApplicationStage.WITHDRAWN) {
+      return true;
+    }
+    return (
+      Object.values(ApplicationStage).indexOf(to) >
+      Object.values(ApplicationStage).indexOf(from)
     );
   }
 }

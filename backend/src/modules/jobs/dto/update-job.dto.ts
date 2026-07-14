@@ -10,6 +10,8 @@ import {
 import { ApiProperty } from '@nestjs/swagger';
 import { JobStatus } from '../enums/job-status.enum';
 import { Domain } from '../enums/domain.enum';
+import { ListingState } from '../enums/listing-state.enum';
+import { UserDecision } from '../enums/user-decision.enum';
 
 export class UpdateJobDto extends PartialType(CreateJobDto) {
   @ApiProperty({ enum: JobStatus, required: false })
@@ -41,4 +43,19 @@ export class UpdateJobDto extends PartialType(CreateJobDto) {
   @IsString()
   @IsOptional()
   notes?: string;
+
+  @ApiProperty({ enum: ListingState, required: false })
+  @IsEnum(ListingState)
+  @IsOptional()
+  listing_state?: ListingState;
+
+  @ApiProperty({ enum: UserDecision, required: false })
+  @IsEnum(UserDecision)
+  @IsOptional()
+  user_decision?: UserDecision;
+
+  @ApiProperty({ required: false })
+  @IsBoolean()
+  @IsOptional()
+  include_in_gap?: boolean;
 }

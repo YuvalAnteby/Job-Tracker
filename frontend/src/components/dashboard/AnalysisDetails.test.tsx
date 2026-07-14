@@ -2,11 +2,14 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import {
   AnalysisStatus,
+  ApplicationStage,
   Domain,
   Job,
   JobStatus,
+  ListingState,
   MetStatus,
   Recommendation,
+  UserDecision,
 } from '../../types';
 import { AnalysisDetails } from './AnalysisDetails';
 
@@ -39,6 +42,12 @@ const job = (status: AnalysisStatus): Job => ({
   effective_is_applicable: true,
   effective_domain: Domain.BACKEND,
   status: JobStatus.ACTIVE,
+  listing_state: ListingState.OPEN,
+  user_decision: UserDecision.UNDECIDED,
+  application_stage: ApplicationStage.NOT_APPLIED,
+  include_in_gap: true,
+  posting_snapshot: {},
+  application_events: [],
   is_interesting: true,
   requirements: [
     {

@@ -5,6 +5,42 @@
   DELETED = 'DELETED',
 }
 
+export enum ListingState {
+  OPEN = 'OPEN',
+  CLOSED = 'CLOSED',
+  UNKNOWN = 'UNKNOWN',
+}
+
+export enum UserDecision {
+  UNDECIDED = 'UNDECIDED',
+  INTERESTED = 'INTERESTED',
+  APPLY = 'APPLY',
+  SKIP = 'SKIP',
+}
+
+export enum ApplicationStage {
+  NOT_APPLIED = 'NOT_APPLIED',
+  APPLIED = 'APPLIED',
+  RECRUITER_SCREEN = 'RECRUITER_SCREEN',
+  TECHNICAL_INTERVIEW = 'TECHNICAL_INTERVIEW',
+  ASSIGNMENT = 'ASSIGNMENT',
+  ONSITE = 'ONSITE',
+  OFFER = 'OFFER',
+  REJECTED = 'REJECTED',
+  WITHDRAWN = 'WITHDRAWN',
+}
+
+export interface ApplicationStageEvent {
+  id: string;
+  previous_stage: ApplicationStage;
+  new_stage: ApplicationStage;
+  occurred_at: string;
+  recorded_at: string;
+  source: string;
+  notes: string | null;
+  rejection_reason: string | null;
+}
+
 export enum Domain {
   BACKEND = 'BACKEND',
   FULLSTACK = 'FULLSTACK',
@@ -84,6 +120,12 @@ export interface Job {
   effective_domain: Domain;
 
   status: JobStatus;
+  listing_state: ListingState;
+  user_decision: UserDecision;
+  application_stage: ApplicationStage;
+  include_in_gap: boolean;
+  posting_snapshot: Record<string, string | null>;
+  application_events: ApplicationStageEvent[];
   is_interesting: boolean;
   notes?: string;
 
