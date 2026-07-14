@@ -10,6 +10,10 @@ import { Domain } from '../enums/domain.enum';
 import { JobStatus } from '../enums/job-status.enum';
 import { JobRequirement } from './job-requirement.entity';
 import { Expose } from 'class-transformer';
+import { ApplicationStage } from '../enums/application-stage.enum';
+import { ListingState } from '../enums/listing-state.enum';
+import { UserDecision } from '../enums/user-decision.enum';
+import { ApplicationStageEvent } from './application-stage-event.entity';
 
 @Entity('jobs')
 export class Job {
@@ -84,6 +88,29 @@ export class Job {
   @Column({ type: 'timestamptz', nullable: true })
   applied_at: Date | null;
 
+  @Column({ type: 'enum', enum: ListingState, default: ListingState.OPEN })
+  listing_state: ListingState;
+
+  @Column({
+    type: 'enum',
+    enum: UserDecision,
+    default: UserDecision.UNDECIDED,
+  })
+  user_decision: UserDecision;
+
+  @Column({
+    type: 'enum',
+    enum: ApplicationStage,
+    default: ApplicationStage.NOT_APPLIED,
+  })
+  application_stage: ApplicationStage;
+
+  @Column('boolean', { default: true })
+  include_in_gap: boolean;
+
+  @Column('jsonb')
+  posting_snapshot: Record<string, string | null>;
+
   @DeleteDateColumn({ type: 'timestamptz', nullable: true })
   deleted_at: Date | null;
 
@@ -94,6 +121,9 @@ export class Job {
     cascade: true,
   })
   requirements: JobRequirement[];
+
+  @OneToMany(() => ApplicationStageEvent, (event) => event.job)
+  application_events: ApplicationStageEvent[];
 
   // Computed columns (virtual getters)
   @Expose()

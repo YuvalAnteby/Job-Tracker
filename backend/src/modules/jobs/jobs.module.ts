@@ -6,10 +6,11 @@ import { JobsService } from './jobs.service';
 import { JobsController } from './jobs.controller';
 import { LlmModule } from '../llm/llm.module';
 import { SettingsModule } from '../settings/settings.module';
+import { ApplicationStageEvent } from './entities/application-stage-event.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Job, JobRequirement]),
+    TypeOrmModule.forFeature([Job, JobRequirement, ApplicationStageEvent]),
     LlmModule,
     SettingsModule,
   ],

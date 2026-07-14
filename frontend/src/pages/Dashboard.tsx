@@ -7,12 +7,12 @@ import {
   getSortedRowModel,
   SortingState,
 } from '@tanstack/react-table';
-import { Job, JobFilters, JobStatus } from '../types';
-import { useJobs, useUpdateJobStatus, useDeleteJob } from '../hooks/useJobs';
+import { ApplicationStage, Job, JobFilters, ListingState } from '../types';
+import { useJobs, useTransitionApplicationStage, useDeleteJob, useUpdateJob } from '../hooks/useJobs';
 import { ScoreBadge, DomainTag, StatusBadge } from '../components/shared/Badges';
 import { FilterPanel } from '../components/dashboard/FilterPanel';
 import { JobDetailPanel } from '../components/dashboard/JobDetailPanel';
-import { Eye, CheckCircle, XCircle, Trash2, ChevronDown, ChevronRight, Filter } from 'lucide-react';
+import { CheckCircle, XCircle, Trash2, ChevronDown, ChevronRight, Filter } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '../utils/cn';
 
@@ -26,7 +26,8 @@ export const Dashboard: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => window.innerWidth >= 1024);
 
   const { data: jobs = [], isLoading } = useJobs(filters);
-  const updateStatus = useUpdateJobStatus();
+  const transitionStage = useTransitionApplicationStage();
+  const updateJob = useUpdateJob();
   const deleteJob = useDeleteJob();
 
   const columns = useMemo(() => [
@@ -94,16 +95,17 @@ export const Dashboard: React.FC = () => {
               {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
             </button>
             <button 
-              onClick={() => updateStatus.mutate({ id: job.id, status: JobStatus.APPLIED })}
+              onClick={() => transitionStage.mutate({ id: job.id, new_stage: ApplicationStage.APPLIED })}
+              disabled={job.application_stage !== ApplicationStage.NOT_APPLIED}
               className="p-1 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors text-blue-600 dark:text-blue-400" 
               title="Mark Applied"
             >
               <CheckCircle className="h-4 w-4" />
             </button>
             <button 
-              onClick={() => updateStatus.mutate({ id: job.id, status: JobStatus.INACTIVE })}
+              onClick={() => updateJob.mutate({ id: job.id, listing_state: ListingState.CLOSED })}
               className="p-1 hover:bg-gray-100 dark:hover:bg-slate-800 rounded transition-colors text-gray-400 dark:text-slate-500" 
-              title="Mark Inactive"
+              title="Close Listing"
             >
               <XCircle className="h-4 w-4" />
             </button>
@@ -122,7 +124,7 @@ export const Dashboard: React.FC = () => {
         );
       },
     }),
-  ], [updateStatus, deleteJob]);
+  ], [transitionStage, updateJob, deleteJob, selectedJobId]);
 
   const table = useReactTable({
     data: jobs,

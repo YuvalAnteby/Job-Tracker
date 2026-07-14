@@ -4,7 +4,6 @@ import { Repository, IsNull } from 'typeorm';
 import { GapSummary } from './entities/gap-summary.entity';
 import { Job } from '../jobs/entities/job.entity';
 import { Domain } from '../jobs/enums/domain.enum';
-import { JobStatus } from '../jobs/enums/job-status.enum';
 import { LlmService } from '../llm/llm.service';
 import { JobSummaryInput } from '../llm/interfaces/job-analysis.interface';
 import { TelegramService } from '../telegram/telegram.service';
@@ -45,7 +44,7 @@ export class GapService {
       const queryBuilder = this.jobRepository
         .createQueryBuilder('job')
         .leftJoinAndSelect('job.requirements', 'requirement')
-        .where('job.status = :status', { status: JobStatus.ACTIVE });
+        .where('job.include_in_gap = true');
 
       if (domainFilter) {
         queryBuilder.andWhere(
@@ -57,7 +56,7 @@ export class GapService {
       const jobs = await queryBuilder.getMany();
 
       if (jobs.length === 0) {
-        this.logger.warn('No active jobs found for gap analysis.');
+        this.logger.warn('No jobs included in gap analysis.');
         return;
       }
 
@@ -127,7 +126,7 @@ export class GapService {
       if (data.partially_known?.length > 0) {
         message += `🟡 <b>Partial:</b> ${data.partially_known.join(', ')}\n`;
       }
-      
+
       message += `\n`;
     });
 
