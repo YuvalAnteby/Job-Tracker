@@ -32,7 +32,7 @@ export class LlmService {
     );
     const model = await this.settingsService.get<string>(
       'llm_model',
-      'gemini-2.5-flash',
+      'gemini-3.7-flash',
     );
     const cv = await this.settingsService.getMasterCvContext();
     const cvText = cv.text;
@@ -87,7 +87,7 @@ export class LlmService {
     );
     const model = await this.settingsService.get<string>(
       'llm_model',
-      'gemini-2.5-flash',
+      'gemini-3.7-flash',
     );
     const cv = await this.settingsService.getMasterCvContext();
     const cvText = cv.text;

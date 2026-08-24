@@ -29,7 +29,7 @@ const mockData = {
     data: {
       score_threshold: 70,
       llm_provider: 'gemini',
-      llm_model: 'gemini-2.5-flash',
+      llm_model: 'gemini-3.7-flash',
       applicable_domains: ['BACKEND'],
       domain_keywords: { BACKEND: ['api'] },
       telegram_allowed_chat_ids: [],

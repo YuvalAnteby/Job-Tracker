@@ -597,7 +597,7 @@ export class SettingsService implements OnModuleInit {
         FULLSTACK: ['full stack', 'fullstack', 'full-stack'],
       },
       llm_provider: 'gemini',
-      llm_model: 'gemini-2.5-flash',
+      llm_model: 'gemini-3.7-flash',
       telegram_allowed_chat_ids: [],
       reminders_enabled: true,
       reminder_default_days: 3,

@@ -38,7 +38,7 @@ export class GeminiProvider extends LlmProvider {
   async analyzeJob(
     jobDescription: string,
     cvText: string,
-    model: string = 'gemini-2.5-flash',
+    model: string = 'gemini-3.7-flash',
   ): Promise<JobAnalysis> {
     if (!this.ai) {
       throw new Error('Gemini AI not initialized (missing API key)');
@@ -155,11 +155,13 @@ export class GeminiProvider extends LlmProvider {
           );
           continue;
         }
+        this.logger.error(`Gemini job analysis failed: ${error instanceof Error ? error.message : String(error)}`);
+        /*
         this.logger.error(
           error instanceof InvalidLlmOutputError
             ? `Gemini job analysis failed validation: ${error.message}`
             : 'Gemini job analysis provider request failed',
-        );
+        );*/
         throw error;
       }
     }
@@ -169,7 +171,7 @@ export class GeminiProvider extends LlmProvider {
   async generateGapSummary(
     jobs: JobSummaryInput[],
     cvText: string,
-    model: string = 'gemini-2.5-flash',
+    model: string = 'gemini-3.7-flash',
   ): Promise<GapSummaryResult> {
     if (!this.ai) {
       throw new Error('Gemini AI not initialized (missing API key)');
@@ -252,7 +254,7 @@ export class GeminiProvider extends LlmProvider {
       } catch (error: unknown) {
         if (error instanceof InvalidLlmOutputError && attempt === 0) {
           this.logger.warn(
-            `Invalid Gemini gap summary, requesting repair: ${error.message}`,
+            `Invalid Gemini gap summary, requesting repair: `, error
           );
           continue;
         }
@@ -269,7 +271,7 @@ export class GeminiProvider extends LlmProvider {
 
   async extractTextFromImage(
     base64Image: string,
-    model: string = 'gemini-2.5-flash',
+    model: string = 'gemini-3.7-flash',
   ): Promise<string> {
     if (!this.ai) {
       throw new Error('Gemini AI not initialized (missing API key)');
