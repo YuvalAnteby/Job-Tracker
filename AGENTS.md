@@ -32,7 +32,7 @@ implementing behavior or UI. The roadmap is phased; do not implement future
 phase features ahead of the requested scope.
 
 ## Repo-Wide Rules
-
+- Never scan any of the files from `.gitignore` unless you specifically need a specific folder or file from there. (e.g. node_modules, .env, dist, build etc.)
 - Keep `backend/` and `frontend/` independent. Never mix imports across that
   boundary.
 - When implementing an end-to-end feature, implement and verify the backend
