@@ -97,14 +97,33 @@ export class LlmService {
     }
 
     if (providerName === 'gemini') {
-      return {
-        data: await this.geminiProvider.generateGapSummary(jobs, cvText, model),
-        model,
-        prompt_version: GAP_PROMPT_VERSION,
-        analyzed_at: new Date(),
-        cv_revision_id: cv.id,
-        cv_revision: cv.revision,
-      };
+      try {
+        return {
+          data: await this.geminiProvider.generateGapSummary(
+            jobs,
+            cvText,
+            model,
+          ),
+          model,
+          prompt_version: GAP_PROMPT_VERSION,
+          analyzed_at: new Date(),
+          cv_revision_id: cv.id,
+          cv_revision: cv.revision,
+        };
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        this.logger.warn(
+          `Gemini gap summary failed; trying Ollama fallback: ${message}`,
+        );
+        return {
+          data: await this.ollamaProvider.generateGapSummary(jobs, cvText),
+          model: `ollama:${this.ollamaProvider.getModel()}`,
+          prompt_version: `${GAP_PROMPT_VERSION}-ollama`,
+          analyzed_at: new Date(),
+          cv_revision_id: cv.id,
+          cv_revision: cv.revision,
+        };
+      }
     }
 
     throw new Error(`Unsupported LLM provider: ${providerName}`);
