@@ -101,6 +101,29 @@ describe('ApplicationsService reminders', () => {
     });
   });
 
+  it('contains polling failures', async () => {
+    const find = jest.fn().mockRejectedValue(new Error('database unavailable'));
+    const pollingService = new ApplicationsService(
+      { find } as unknown as Repository<ApplicationAction>,
+      {} as Repository<ApplicationActionEvent>,
+      {} as Repository<ReminderDelivery>,
+      {} as Repository<Job>,
+      {
+        get: jest.fn((key: string) =>
+          Promise.resolve(key === 'reminders_enabled' ? true : [123]),
+        ),
+      } as unknown as SettingsService,
+      {} as TelegramService,
+      {} as DataSource,
+    );
+
+    pollingService.onModuleInit();
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    pollingService.onModuleDestroy();
+
+    expect(find).toHaveBeenCalledTimes(1);
+  });
+
   it('groups due dates using the configured timezone', async () => {
     const actionRepository = {
       find: jest

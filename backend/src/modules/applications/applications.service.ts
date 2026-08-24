@@ -56,8 +56,15 @@ export class ApplicationsService implements OnModuleInit, OnModuleDestroy {
   ) {}
 
   onModuleInit(): void {
-    void this.deliverDueReminders();
-    this.poller = setInterval(() => void this.deliverDueReminders(), 60_000);
+    const poll = (): void => {
+      void this.deliverDueReminders().catch((error: unknown) =>
+        this.logger.error(
+          `Reminder polling failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        ),
+      );
+    };
+    poll();
+    this.poller = setInterval(poll, 60_000);
   }
 
   onModuleDestroy(): void {
