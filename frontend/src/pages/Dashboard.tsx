@@ -43,11 +43,12 @@ import { Link } from 'react-router-dom';
 import { useAttention } from '../hooks/useApplications';
 
 const columnHelper = createColumnHelper<Job>();
+const EMPTY_JOBS: Job[] = [];
 
 export const Dashboard: React.FC = () => {
   const [filters, setFilters] = useState<JobFilters>({});
   const [sorting, setSorting] = useState<SortingState>([
-    { id: 'created_at', desc: true },
+    { id: 'added_at', desc: true },
   ]);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
@@ -55,7 +56,7 @@ export const Dashboard: React.FC = () => {
     () => window.innerWidth >= 1024,
   );
 
-  const { data: jobs = [], isLoading } = useJobs(filters);
+  const { data: jobs = EMPTY_JOBS, isLoading } = useJobs(filters);
   const transitionStage = useTransitionApplicationStage();
   const updateJob = useUpdateJob();
   const deleteJob = useDeleteJob();
