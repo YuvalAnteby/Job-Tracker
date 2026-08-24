@@ -1,6 +1,7 @@
 ﻿import { Injectable, Logger } from '@nestjs/common';
 import { SettingsService } from '../settings/settings.service';
 import { GeminiProvider } from './providers/gemini.provider';
+import { OllamaProvider } from './providers/ollama.provider';
 import {
   JobAnalysis,
   GapSummaryResult,
@@ -19,6 +20,7 @@ export class LlmService {
   constructor(
     private readonly settingsService: SettingsService,
     private readonly geminiProvider: GeminiProvider,
+    private readonly ollamaProvider: OllamaProvider,
   ) {}
 
   async analyzeJob(
@@ -42,18 +44,33 @@ export class LlmService {
     }
 
     if (providerName === 'gemini') {
-      return {
-        data: await this.geminiProvider.analyzeJob(
-          jobDescription,
-          cvText,
+      try {
+        return {
+          data: await this.geminiProvider.analyzeJob(
+            jobDescription,
+            cvText,
+            model,
+          ),
           model,
-        ),
-        model,
-        prompt_version: JOB_PROMPT_VERSION,
-        analyzed_at: new Date(),
-        cv_revision_id: cv.id,
-        cv_revision: cv.revision,
-      };
+          prompt_version: JOB_PROMPT_VERSION,
+          analyzed_at: new Date(),
+          cv_revision_id: cv.id,
+          cv_revision: cv.revision,
+        };
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        this.logger.warn(
+          `Gemini job analysis failed; trying Ollama fallback: ${message}`,
+        );
+        return {
+          data: await this.ollamaProvider.analyzeJob(jobDescription, cvText),
+          model: `ollama:${this.ollamaProvider.getModel()}`,
+          prompt_version: `${JOB_PROMPT_VERSION}-ollama`,
+          analyzed_at: new Date(),
+          cv_revision_id: cv.id,
+          cv_revision: cv.revision,
+        };
+      }
     }
 
     // Add other providers here (Anthropic, OpenAI)
