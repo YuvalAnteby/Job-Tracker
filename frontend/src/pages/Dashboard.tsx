@@ -52,9 +52,7 @@ export const Dashboard: React.FC = () => {
   ]);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(
-    () => window.innerWidth >= 1024,
-  );
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const { data: jobs = EMPTY_JOBS, isLoading } = useJobs(filters);
   const transitionStage = useTransitionApplicationStage();
