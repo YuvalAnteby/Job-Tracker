@@ -30,12 +30,15 @@ export const useSkillsData = (domain?: Domain, includeResearch = false) => {
     onError: () => toast.error('Could not save taxonomy correction'),
   });
   const rebuild = useMutation({
-    mutationFn: async (): Promise<void> => {
-      await apiClient.post('/skills/rebuild');
+    mutationFn: async (): Promise<{ normalized: number; excluded: number }> => {
+      const response = await apiClient.post<{ normalized: number; excluded: number }>(
+        '/skills/rebuild',
+      );
+      return response.data;
     },
-    onSuccess: async () => {
+    onSuccess: async ({ normalized, excluded }) => {
       await invalidate();
-      toast.success('Skill matrix rebuilt');
+      toast.success(`${normalized} technical requirements linked; ${excluded} excluded`);
     },
     onError: () => toast.error('Could not rebuild skill matrix'),
   });

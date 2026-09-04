@@ -95,7 +95,12 @@ export interface JobRequirement {
   evidence_inferred: boolean;
   skill_id: string | null;
   priority: 'REQUIRED' | 'PREFERRED';
-  gap_type: 'SKILL' | 'EVIDENCE' | 'TIME_BOUND' | 'ROLE_MISMATCH';
+  gap_type:
+    | 'SKILL'
+    | 'EVIDENCE'
+    | 'TIME_BOUND'
+    | 'ROLE_MISMATCH'
+    | 'NON_SKILL';
   actionability: 'HIGH' | 'MEDIUM' | 'LOW';
   effort: 'SMALL' | 'MEDIUM' | 'LARGE';
 }

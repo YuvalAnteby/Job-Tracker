@@ -236,28 +236,6 @@ const Skills = () => {
             </div>
           )}
 
-          {data.non_learnable_gaps.length > 0 && (
-            <section>
-              <h2 className="text-lg font-semibold">Eligibility constraints</h2>
-              <p className="mb-3 text-sm text-gray-500 dark:text-slate-400">
-                Experience duration, graduation timing, and role-level
-                mismatches are tracked separately from learnable skills.
-              </p>
-              <ul className="divide-y divide-gray-200 rounded-md border border-gray-200 bg-white px-4 dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-900">
-                {data.non_learnable_gaps.map((gap) => (
-                  <li
-                    className="py-3 text-sm"
-                    key={`${gap.job_id}:${gap.requirement_text}`}
-                  >
-                    <span className="font-medium">{gap.requirement_text}</span>
-                    <span className="ml-2 text-gray-500 dark:text-slate-400">
-                      {gap.company_name}, {gap.title}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
         </>
       )}
 
