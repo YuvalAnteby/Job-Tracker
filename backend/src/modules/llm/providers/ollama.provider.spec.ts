@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Domain } from '../../jobs/enums/domain.enum';
 import { MetStatus } from '../../jobs/enums/met-status.enum';
@@ -178,5 +179,59 @@ describe('OllamaProvider', () => {
     await expect(provider.analyzeJob('Job description', 'CV')).rejects.toThrow(
       'Ollama request failed (503): model is unavailable',
     );
+  });
+
+  it('logs response metrics without logging CV or job content', async () => {
+    const logMock = jest
+      .spyOn(Logger.prototype, 'log')
+      .mockImplementation(() => undefined);
+    jest.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      json: (): Promise<unknown> =>
+        Promise.resolve({
+          message: { content: JSON.stringify(analysis) },
+          prompt_eval_count: 123,
+          eval_count: 45,
+          done_reason: 'stop',
+        }),
+    } as Response);
+    const provider = new OllamaProvider(makeConfig());
+
+    await provider.analyzeJob('SECRET_JOB_TEXT', 'SECRET_CV_TEXT');
+
+    const metricLog = logMock.mock.calls
+      .map(([message]) => String(message))
+      .find((message) => message.includes('Ollama job-analysis completed'));
+    expect(metricLog).toBeDefined();
+    expect(metricLog).toContain('prompt_tokens=123');
+    expect(metricLog).toContain('output_tokens=45');
+    expect(metricLog).toContain('done_reason=stop');
+    expect(metricLog).not.toContain('SECRET_JOB_TEXT');
+    expect(metricLog).not.toContain('SECRET_CV_TEXT');
+  });
+
+  it('warns about context overflow without logging request content', async () => {
+    const warnMock = jest
+      .spyOn(Logger.prototype, 'warn')
+      .mockImplementation(() => undefined);
+    jest.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: false,
+      status: 400,
+      text: (): Promise<string> =>
+        Promise.resolve('the input length exceeds the context length'),
+    } as Response);
+    const provider = new OllamaProvider(makeConfig());
+
+    await expect(
+      provider.analyzeJob('SECRET_JOB_TEXT', 'SECRET_CV_TEXT'),
+    ).rejects.toThrow('Ollama request failed (400)');
+
+    const contextWarning = warnMock.mock.calls
+      .map(([message]) => String(message))
+      .find((message) => message.includes('context overflow'));
+    expect(contextWarning).toBeDefined();
+    expect(contextWarning).toContain('input_chars=');
+    expect(contextWarning).not.toContain('SECRET_JOB_TEXT');
+    expect(contextWarning).not.toContain('SECRET_CV_TEXT');
   });
 });

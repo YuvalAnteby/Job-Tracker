@@ -12,6 +12,13 @@ import {
   JobAnalysis,
   JobSummaryInput,
 } from '../interfaces/job-analysis.interface';
+import {
+  TaxonomyDecision,
+  TaxonomyConfidence,
+  TaxonomyDecisionType,
+  parseTaxonomyDecisions,
+} from '../interfaces/skill-taxonomy.interface';
+import { truncate } from 'fs';
 
 type OllamaThink = boolean | 'low' | 'medium' | 'high' | 'max';
 
@@ -22,6 +29,15 @@ interface JsonSchema {
   items?: JsonSchema;
   required?: string[];
   enum?: readonly string[];
+}
+
+type OllamaOperation = 'job-analysis' | 'gap-summary' | 'skill-taxonomy';
+
+interface OllamaChatResponse {
+  message?: { content?: string };
+  prompt_eval_count?: number;
+  eval_count?: number;
+  done_reason?: string;
 }
 
 const DEFAULT_BASE_URL = 'http://host.docker.internal:11434';
@@ -148,6 +164,41 @@ The response must match this JSON schema:
 ${JSON.stringify(GAP_SUMMARY_SCHEMA)}
 `;
 
+const TAXONOMY_SCHEMA: JsonSchema = {
+  type: 'object',
+  properties: {
+    decisions: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          term: { type: 'string' },
+          decision: {
+            type: 'string',
+            enum: Object.values(TaxonomyDecisionType),
+          },
+          canonical_name: { type: ['string', 'null'] },
+          confidence: {
+            type: 'string',
+            enum: Object.values(TaxonomyConfidence),
+          },
+        },
+        required: ['term', 'decision', 'canonical_name', 'confidence'],
+      },
+    },
+  },
+  required: ['decisions'],
+};
+
+const TAXONOMY_SYSTEM_PROMPT = `
+Classify each job requirement term for a technical learning tracker. TRACK only
+concrete technical tools, programming languages, platforms, frameworks, and
+technical practices. EXCLUDE credentials, spoken languages, seniority,
+experience duration, soft traits, and other non-technical constraints. Use
+UNSURE for ambiguity. TRACK needs one concise canonical name and HIGH
+confidence only when clear. Return only JSON matching the schema.
+`;
+
 @Injectable()
 export class OllamaProvider {
   private readonly logger = new Logger(OllamaProvider.name);
@@ -190,6 +241,7 @@ export class OllamaProvider {
     cvText: string,
   ): Promise<JobAnalysis> {
     const content = await this.chat(
+      'job-analysis',
       JOB_ANALYSIS_SYSTEM_PROMPT,
       `CV Content:\n${cvText}\n\nJob Description:\n${jobDescription}`,
       JOB_ANALYSIS_SCHEMA,
@@ -202,6 +254,7 @@ export class OllamaProvider {
     cvText: string,
   ): Promise<GapSummaryResult> {
     const content = await this.chat(
+      'gap-summary',
       GAP_SUMMARY_SYSTEM_PROMPT,
       `CV Content:\n${cvText}\n\nJobs and Requirements:\n${JSON.stringify(jobs, null, 2)}`,
       GAP_SUMMARY_SCHEMA,
@@ -209,11 +262,23 @@ export class OllamaProvider {
     return parseGapSummary(content);
   }
 
+  async classifySkillTerms(terms: string[]): Promise<TaxonomyDecision[]> {
+    const content = await this.chat(
+      'skill-taxonomy',
+      TAXONOMY_SYSTEM_PROMPT,
+      JSON.stringify({ terms }),
+      TAXONOMY_SCHEMA,
+    );
+    return parseTaxonomyDecisions(content, terms);
+  }
+
   private async chat(
+    operation: OllamaOperation,
     systemPrompt: string,
     userContent: string,
     format: JsonSchema,
   ): Promise<string> {
+    const inputChars = systemPrompt.length + userContent.length;
     const response = await fetch(`${this.baseUrl}/api/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -225,25 +290,42 @@ export class OllamaProvider {
         ],
         stream: false,
         think: this.think,
+        truncate: false,
+        shift: false,
         format,
-        options: { temperature: 0 },
+        options: { temperature: 0, use_mmap: false, num_ctx: 12288 },
       }),
       signal: AbortSignal.timeout(this.timeoutMs),
     });
 
     if (!response.ok) {
       const detail = (await response.text()).trim().slice(0, 300);
+      if (
+        /context (?:length|size)|too many tokens|input length exceeds/i.test(
+          detail,
+        )
+      ) {
+        this.logger.warn(
+          `Ollama ${operation} context overflow: input_chars=${inputChars}; response details omitted`,
+        );
+      }
       throw new Error(
         `Ollama request failed (${response.status})${detail ? `: ${detail}` : ''}`,
       );
     }
 
-    let payload: unknown;
+    let payload: OllamaChatResponse;
     try {
-      payload = (await response.json()) as unknown;
+      payload = (await response.json()) as OllamaChatResponse;
     } catch {
       throw new InvalidLlmOutputError('Ollama returned invalid JSON');
     }
+
+    this.logger.log(
+      `Ollama ${operation} completed: prompt_tokens=${payload.prompt_eval_count ?? 'unknown'} ` +
+        `output_tokens=${payload.eval_count ?? 'unknown'} ` +
+        `done_reason=${payload.done_reason ?? 'unknown'} input_chars=${inputChars}`,
+    );
 
     return this.responseContent(payload);
   }

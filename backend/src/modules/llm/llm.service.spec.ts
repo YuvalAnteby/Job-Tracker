@@ -136,6 +136,69 @@ describe('LlmService master CV integration', () => {
     );
   });
 
+  it('uses the configured local Ollama model without calling Gemini', async () => {
+    const settings = {
+      get: jest.fn((key: string) =>
+        Promise.resolve(key === 'llm_provider' ? 'ollama' : 'gemini-test'),
+      ),
+      getMasterCvContext: jest.fn().mockResolvedValue({
+        id: 'cv-1',
+        revision: 1,
+        text: 'Current editable CV',
+      }),
+    };
+    const gemini = { analyzeJob: jest.fn() };
+    const ollama = {
+      analyzeJob: jest.fn().mockResolvedValue({ score: 82 }),
+      getModel: jest.fn().mockReturnValue('gpt-oss:20b'),
+    };
+    const service = new LlmService(
+      settings as unknown as SettingsService,
+      gemini as unknown as GeminiProvider,
+      ollama as unknown as OllamaProvider,
+    );
+
+    await expect(service.analyzeJob('Job description')).resolves.toMatchObject({
+      model: 'ollama:gpt-oss:20b',
+      prompt_version: 'job-analysis-v2-ollama',
+    });
+    expect(gemini.analyzeJob).not.toHaveBeenCalled();
+    expect(ollama.analyzeJob).toHaveBeenCalledWith(
+      'Job description',
+      'Current editable CV',
+    );
+  });
+
+  it('falls back to Ollama when Gemini taxonomy is invalid', async () => {
+    const settings = {
+      get: jest.fn().mockResolvedValue('gemini'),
+    };
+    const gemini = {
+      classifySkillTerms: jest
+        .fn()
+        .mockRejectedValue(new InvalidLlmOutputError('Missing term')),
+    };
+    const ollama = {
+      getModel: jest.fn().mockReturnValue('gemma4:12b'),
+      classifySkillTerms: jest.fn().mockResolvedValue([
+        {
+          term: 'Kafka',
+          decision: 'TRACK',
+          canonical_name: 'Kafka',
+          confidence: 'HIGH',
+        },
+      ]),
+    };
+    const service = new LlmService(
+      settings as unknown as SettingsService,
+      gemini as unknown as GeminiProvider,
+      ollama as unknown as OllamaProvider,
+    );
+
+    await expect(service.classifySkillTerms(['Kafka'])).resolves.toHaveLength(1);
+    expect(ollama.classifySkillTerms).toHaveBeenCalledWith(['Kafka']);
+  });
+
   it('uses Gemini for gap summaries before trying Ollama', async () => {
     const settings = {
       get: jest.fn((key: string) =>

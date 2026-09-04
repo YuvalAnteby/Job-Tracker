@@ -7,6 +7,12 @@ import {
   GapSummaryResult,
   JobSummaryInput,
 } from '../interfaces/job-analysis.interface';
+import {
+  TaxonomyDecision,
+  TaxonomyConfidence,
+  TaxonomyDecisionType,
+  parseTaxonomyDecisions,
+} from '../interfaces/skill-taxonomy.interface';
 import { Domain } from '../../jobs/enums/domain.enum';
 import { MetStatus } from '../../jobs/enums/met-status.enum';
 import {
@@ -17,6 +23,17 @@ import {
 
 export const JOB_PROMPT_VERSION = 'job-analysis-v2';
 export const GAP_PROMPT_VERSION = 'gap-summary-v2';
+
+const TAXONOMY_SYSTEM_PROMPT = `
+You classify job requirement terms for a technical learning tracker. For every
+term, choose TRACK only for a concrete technical tool, programming language,
+platform, framework, or technical practice. Use EXCLUDE for credentials,
+spoken-language proficiency, seniority, experience duration, soft traits, and
+other non-technical constraints. Use UNSURE when the term is ambiguous.
+
+For TRACK, give one concise canonical technical name. Use HIGH confidence only
+when the classification is clear. Return only JSON matching the schema.
+`;
 
 @Injectable()
 export class GeminiProvider extends LlmProvider {
@@ -267,6 +284,75 @@ export class GeminiProvider extends LlmProvider {
       }
     }
     throw new InvalidLlmOutputError('Gemini gap analysis retry exhausted');
+  }
+
+  async classifySkillTerms(
+    terms: string[],
+    model: string = 'gemini-3.7-flash',
+  ): Promise<TaxonomyDecision[]> {
+    if (!this.ai) throw new Error('Gemini AI not initialized (missing API key)');
+    const prompt = JSON.stringify({ terms });
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      try {
+        const response = await this.ai.models.generateContent({
+          model,
+          contents:
+            attempt === 0
+              ? prompt
+              : `${prompt}\nReturn one valid decision for every supplied term.`,
+          config: {
+            systemInstruction: TAXONOMY_SYSTEM_PROMPT,
+            responseMimeType: 'application/json',
+            responseSchema: {
+              type: Type.OBJECT,
+              properties: {
+                decisions: {
+                  type: Type.ARRAY,
+                  items: {
+                    type: Type.OBJECT,
+                    properties: {
+                      term: { type: Type.STRING },
+                      decision: {
+                        type: Type.STRING,
+                        enum: Object.values(TaxonomyDecisionType),
+                      },
+                      canonical_name: { type: Type.STRING, nullable: true },
+                      confidence: {
+                        type: Type.STRING,
+                        enum: Object.values(TaxonomyConfidence),
+                      },
+                    },
+                    required: [
+                      'term',
+                      'decision',
+                      'canonical_name',
+                      'confidence',
+                    ],
+                  },
+                },
+              },
+              required: ['decisions'],
+            },
+          },
+        });
+        if (!response.text)
+          throw new InvalidLlmOutputError('Empty response from Gemini');
+        const decisions = parseTaxonomyDecisions(response.text, terms);
+        if (decisions.length !== terms.length) {
+          throw new InvalidLlmOutputError(
+            'Taxonomy response omitted or invalidated a supplied term',
+          );
+        }
+        return decisions;
+      } catch (error: unknown) {
+        if (error instanceof InvalidLlmOutputError && attempt === 0) {
+          this.logger.warn(`Invalid Gemini taxonomy: ${error.message}`);
+          continue;
+        }
+        throw error;
+      }
+    }
+    throw new InvalidLlmOutputError('Gemini taxonomy retry exhausted');
   }
 
   async extractTextFromImage(
