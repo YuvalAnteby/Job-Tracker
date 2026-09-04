@@ -5,10 +5,21 @@ import { RoadmapItem } from './entities/roadmap-item.entity';
 import { RoadmapProofArtifact } from './entities/roadmap-proof-artifact.entity';
 import { RoadmapStatus } from './enums/roadmap-status.enum';
 import { recommendedPriority, RoadmapService } from './roadmap.service';
+import { GapType } from '../skills/skill-taxonomy';
 
 describe('RoadmapService', () => {
   it('calculates the documented recommended priority', () => {
     expect(recommendedPriority(4, 5, 3, 2, 2)).toBe(60);
+  });
+
+  it('rejects non-skill roadmap items', async () => {
+    const service = new RoadmapService(
+      {} as DataSource,
+      {} as SettingsService,
+    );
+    await expect(
+      service.create({ title: 'English fluency', gap_type: GapType.NON_SKILL }),
+    ).rejects.toThrow('Non-skill requirements cannot be added to the roadmap.');
   });
 
   it('keeps completion separate from explicit evidence promotion', async () => {

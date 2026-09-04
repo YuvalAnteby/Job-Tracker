@@ -33,4 +33,23 @@ describe('skill taxonomy', () => {
       }),
     );
   });
+
+  it.each([
+    "BSc in Computer Science",
+    'B.Sc. in Computer Science',
+    "Bachelor’s in Computer Science",
+    'English proficiency',
+    'Hebrew fluency',
+    'Team player',
+  ])('excludes non-technical requirement %s', (requirement) => {
+    expect(classifyRequirement(requirement, false)).toEqual(
+      expect.objectContaining({ learnable: false, gapType: GapType.NON_SKILL }),
+    );
+  });
+
+  it.each(['system design', 'API design'])('keeps %s learnable', (requirement) => {
+    expect(classifyRequirement(requirement, false)).toEqual(
+      expect.objectContaining({ learnable: true, gapType: GapType.SKILL }),
+    );
+  });
 });

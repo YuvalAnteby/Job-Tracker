@@ -198,6 +198,12 @@ export class JobsService {
           ? analysis.title || 'Unknown Title'
           : providedTitle;
 
+      const normalizations = await this.skillsService.normalizeRequirements(
+        analysis.requirements.map((requirement) => ({
+          name: requirement.name,
+          cv_evidence: requirement.cv_evidence,
+        })),
+      );
       const requirements: Array<{
         req: (typeof analysis.requirements)[number];
         index: number;
@@ -207,10 +213,7 @@ export class JobsService {
         requirements.push({
           req,
           index,
-          normalized: await this.skillsService.normalizeRequirement(
-            req.name,
-            req.cv_evidence,
-          ),
+          normalized: normalizations[index],
         });
       }
 

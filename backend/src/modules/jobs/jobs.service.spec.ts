@@ -179,13 +179,13 @@ describe('JobsService analysis persistence', () => {
       settings as unknown as SettingsService,
       {} as DataSource,
       {
-        normalizeRequirement: jest.fn().mockResolvedValue({
+        normalizeRequirements: jest.fn().mockResolvedValue([{
           skill_id: null,
           priority: 'REQUIRED',
           gap_type: 'SKILL',
           actionability: 'HIGH',
           effort: 'MEDIUM',
-        }),
+        }]),
       } as unknown as SkillsService,
     );
 
@@ -206,6 +206,9 @@ describe('JobsService analysis persistence', () => {
     expect(result.requirements[0].cv_evidence).toBe(
       'Built TypeScript services.',
     );
+    expect(
+      service['skillsService'].normalizeRequirements,
+    ).toHaveBeenCalledTimes(1);
   });
 });
 

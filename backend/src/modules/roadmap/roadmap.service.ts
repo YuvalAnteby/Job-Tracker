@@ -62,6 +62,11 @@ export class RoadmapService {
 
   async create(dto: CreateRoadmapItemDto): Promise<RoadmapView> {
     const gapType = dto.gap_type ?? GapType.SKILL;
+    if (gapType === GapType.NON_SKILL) {
+      throw new BadRequestException(
+        'Non-skill requirements cannot be added to the roadmap.',
+      );
+    }
     if (
       (gapType === GapType.TIME_BOUND ||
         gapType === GapType.ROLE_MISMATCH ||

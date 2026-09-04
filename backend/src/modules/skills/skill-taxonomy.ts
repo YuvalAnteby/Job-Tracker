@@ -8,6 +8,7 @@ export enum GapType {
   EVIDENCE = 'EVIDENCE',
   TIME_BOUND = 'TIME_BOUND',
   ROLE_MISMATCH = 'ROLE_MISMATCH',
+  NON_SKILL = 'NON_SKILL',
 }
 
 export enum Actionability {
@@ -48,7 +49,19 @@ export const classifyRequirement = (
     /\b(graduat(e|ed|ing|ion)|degree by|class of)\b/.test(normalized);
   const roleMismatch =
     /\b(senior|staff|principal|lead|manager|director)\b/.test(normalized);
-  const gapType = timeBound
+  const nonSkill =
+    /\b(b\.?\s?(sc|a|eng|tech|com)|bachelor'?s?|master'?s?|ph\.?\s?d|doctorate|degree|university|college)\b/.test(
+      normalized,
+    ) ||
+    /\b(english|hebrew|arabic|spanish|french|german|russian|chinese|mandarin|japanese|korean|portuguese|italian)\b.*\b(proficien\w*|fluen\w*|native|language|written|verbal)\b/.test(
+      normalized,
+    ) ||
+    /\b(team player|self[- ]starter|detail[- ]oriented|interpersonal|communication skills|work (well )?independently|collaborative|proactive)\b/.test(
+      normalized,
+    );
+  const gapType = nonSkill
+    ? GapType.NON_SKILL
+    : timeBound
     ? GapType.TIME_BOUND
     : roleMismatch
       ? GapType.ROLE_MISMATCH
@@ -73,6 +86,6 @@ export const classifyRequirement = (
         : gapType === GapType.EVIDENCE
           ? Effort.SMALL
           : Effort.LARGE,
-    learnable: !timeBound && !roleMismatch,
+    learnable: !nonSkill && !timeBound && !roleMismatch,
   };
 };
