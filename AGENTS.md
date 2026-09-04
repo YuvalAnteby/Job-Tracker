@@ -71,7 +71,7 @@ npm run docker:test:backend
 ```
 
 ## Change Conventions
-
+- Never add yourself as co-author
 - For new files, provide or describe the complete file.
 - For existing files, identify the exact insertion or replacement location
   instead of reproducing unrelated content.
