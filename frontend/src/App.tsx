@@ -1,8 +1,17 @@
-import { Outlet, RouterProvider, createBrowserRouter } from 'react-router-dom';
+import {
+  Outlet,
+  RouterProvider,
+  createBrowserRouter,
+  useNavigate,
+  useParams,
+} from 'react-router-dom';
+import type { JSX } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { Toaster } from 'react-hot-toast';
 import { MainLayout } from './components/layout/MainLayout';
+import { JobDetailPanel } from './components/dashboard/JobDetailPanel';
+import { AnalysisActivity } from './components/shared/AnalysisActivity';
 
 import { Dashboard } from './pages/Dashboard';
 import GapSummary from './pages/GapSummary/GapSummary';
@@ -12,8 +21,25 @@ import Skills from './pages/Skills/Skills';
 import Roadmap from './pages/Roadmap/Roadmap';
 import Analytics from './pages/Analytics/Analytics';
 
-// Placeholder components for routes
-const JobDetail = () => <div className="text-2xl font-bold">Job Detail</div>;
+const AppLayout = (): JSX.Element => (
+  <>
+    <AnalysisActivity />
+    <MainLayout>
+      <Outlet />
+    </MainLayout>
+  </>
+);
+
+const JobDetail = (): JSX.Element => {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  return (
+    <JobDetailPanel
+      jobId={id ?? null}
+      onClose={() => navigate('/')}
+    />
+  );
+};
 const NotFound = () => (
   <div className="text-2xl font-bold">404 - Not Found</div>
 );
@@ -21,9 +47,7 @@ const NotFound = () => (
 const router = createBrowserRouter([
   {
     element: (
-      <MainLayout>
-        <Outlet />
-      </MainLayout>
+      <AppLayout />
     ),
     children: [
       { path: '/', element: <Dashboard /> },

@@ -73,7 +73,9 @@ Backend receives POST /jobs
         ├─► Fetch master CV text from settings
         │   (cached in DB, sourced from Google Drive/Docs as raw text/markdown)
         │
-        ├─► LLM Analysis (synchronous, ~3–8s)
+        ├─► Save pending job and return 202 Accepted to the web client
+        │
+        └─► LLM Analysis (background)
         │     ├── Score (0–100)
         │     ├── is_applicable (score >= threshold)
         │     ├── is_interesting flag
@@ -83,9 +85,11 @@ Backend receives POST /jobs
         │           ├── NOT_MET
         │           └── UNCERTAIN
         │
-        └─► Save to DB (jobs + job_requirements)
-              └─► Return full job object to client
+              └─► Save analysis and requirements, or record analysis failure
+                    └─► Web client polls pending jobs until a terminal state
 ```
+
+Telegram ingestion retains its synchronous service entry point so its response can include completed analysis. Background work currently runs in-process; a backend restart can interrupt a pending run. A durable queue remains a future upgrade.
 
 ### Gap Summary (On-Demand, Background)
 

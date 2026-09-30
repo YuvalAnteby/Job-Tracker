@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useId, useRef } from 'react';
 import { X } from 'lucide-react';
 import { cn } from '../../utils/cn';
 
@@ -17,53 +17,66 @@ export const Modal: React.FC<ModalProps> = ({
   children,
   className,
 }) => {
-  useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const titleId = useId();
+  const requestClose = (): void => {
+    onClose();
+  };
 
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-      window.addEventListener('keydown', handleEscape);
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+
+    if (isOpen && !dialog.open) {
+      dialog.showModal();
+    }
+
+    if (!isOpen && dialog.open) {
+      dialog.close();
     }
 
     return () => {
-      document.body.style.overflow = 'unset';
-      window.removeEventListener('keydown', handleEscape);
+      if (dialog.open) dialog.close();
     };
-  }, [isOpen, onClose]);
-
-  if (!isOpen) return null;
+  }, [isOpen]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
-      {/* Backdrop */}
-      <div 
-        className="absolute inset-0 bg-slate-950/50 backdrop-blur-sm animate-in fade-in duration-200"
-        onClick={onClose}
-      />
-      
-      {/* Modal Content */}
-      <div className={cn(
-        "relative w-full max-w-2xl bg-white dark:bg-slate-950 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.1),0_8px_24px_rgba(0,0,0,0.1)] flex flex-col max-h-[90vh] overflow-hidden animate-in zoom-in-95 duration-200",
-        className
-      )}>
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-slate-800">
-          <h3 className="text-xl font-bold text-gray-900 dark:text-white">{title}</h3>
-          <button
-            onClick={onClose}
-            className="p-1 text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
-          >
-            <X className="h-6 w-6" />
-          </button>
-        </div>
-
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto p-6">
-          {children}
-        </div>
+    <dialog
+      ref={dialogRef}
+      hidden={!isOpen}
+      aria-labelledby={titleId}
+      className={cn(
+        'm-auto flex max-h-[calc(100dvh-1rem)] w-[calc(100%-1rem)] max-w-2xl flex-col overflow-hidden rounded-xl border-0 bg-white p-0 text-gray-900 shadow-[0_1px_3px_rgba(0,0,0,0.1),0_8px_24px_rgba(0,0,0,0.1)] backdrop:bg-slate-950/50 backdrop:backdrop-blur-sm dark:bg-slate-950 dark:text-slate-200 sm:max-h-[calc(100dvh-3rem)] sm:w-[calc(100%-3rem)]',
+        className,
+      )}
+      onCancel={(event) => {
+        event.preventDefault();
+        requestClose();
+      }}
+      onClick={(event) => {
+        if (event.target === event.currentTarget) requestClose();
+      }}
+    >
+      <div className="flex shrink-0 items-center justify-between border-b border-gray-100 px-4 py-3 dark:border-slate-800 sm:px-6 sm:py-4">
+        <h3
+          id={titleId}
+          className="min-w-0 pr-3 text-lg font-bold text-gray-900 dark:text-white sm:text-xl"
+        >
+          {title}
+        </h3>
+        <button
+          type="button"
+          aria-label="Close dialog"
+          onClick={requestClose}
+          className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-300"
+        >
+          <X className="h-6 w-6" aria-hidden="true" />
+        </button>
       </div>
-    </div>
+
+      <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
+        {children}
+      </div>
+    </dialog>
   );
 };

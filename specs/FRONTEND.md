@@ -157,9 +157,9 @@ Each requirement row is expandable to show the full `reason` text from LLM.
 
 **"Generate New" button behavior:**
 - POST `/gap/generate`
-- Button becomes disabled with spinner
-- Toast: "Generating gap analysis in background. You'll get a Telegram notification when ready."
-- Page auto-refreshes `/gap/latest` when user revisits or after polling.
+- The server persists a pending run before responding. Disable the button while that cohort is generating.
+- Poll `/gap/status` for the selected domain and research setting until completion or failure, including after revisiting the page.
+- Keep the previous successful summary visible during generation. Refresh it when the run completes; show a retryable error if the run fails.
 
 ---
 
@@ -196,9 +196,11 @@ Triggered from the top nav button. Opens a modal.
 ```
 
 After clicking "Analyze →":
-- Button shows spinner + "Analyzing with AI..."
-- On success → modal closes, new job appears at top of list, toast: "✅ Google — Backend Engineer added (Score: 82)"
-- On LLM error → toast: "⚠️ Job saved but analysis failed. You can retry from the job detail."
+- Show a saving state until the server accepts and saves the job.
+- On acceptance (`202`) close the modal and return to the dashboard. The job is saved with pending analysis; do not display a completed score yet.
+- Show analysis activity across navigation and filters. Poll pending jobs and details until they complete or fail.
+- On analysis failure, retain the saved job and offer retry from its details. On submission failure, retain form values and show the error.
+- Refreshing job details must preserve unsaved notes and overrides.
 
 ---
 
@@ -268,6 +270,7 @@ After clicking "Analyze →":
 
 ## Responsive Considerations
 
-- Primary use: desktop browser (full table view)
-- Mobile: filter panel collapses to drawer, table becomes card list
-- Not a priority for MVP
+- Wide desktop: compact jobs table and optional filters alongside the list.
+- Laptop and tablet: navigation collapses before it crowds the header; filters and controls reflow to fit the available width.
+- Mobile: jobs become a readable list with selection, actions, and details still available. Filters collapse, and dialogs fit the dynamic viewport.
+- Loading, empty results, request errors, and background processing are distinct UI states.

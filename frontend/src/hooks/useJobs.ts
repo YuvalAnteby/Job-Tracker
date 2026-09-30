@@ -1,6 +1,12 @@
 ﻿import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../api/client';
 import { ApplicationStage, JobStatus } from '../types';
+import { AnalysisStatus } from '../types';
+import type {
+  QueryClient,
+  UseMutationResult,
+  UseQueryResult,
+} from '@tanstack/react-query';
 import type {
   AnalysisRevision,
   BulkJobsResult,
@@ -8,6 +14,49 @@ import type {
   JobFilters,
   ReanalysisResult,
 } from '../types';
+
+export interface CreateJobPayload {
+  company_name: string;
+  title: string;
+  url: string;
+  description: string;
+  posted_at?: string;
+}
+
+const isJob = (value: unknown): value is Job => {
+  if (typeof value !== 'object' || value === null) return false;
+  const record = value as Record<string, unknown>;
+  return typeof record.id === 'string' && 'analysis_status' in record;
+};
+
+const markJobPending = (job: Job): Job => ({
+  ...job,
+  analysis_status: AnalysisStatus.PENDING,
+  analysis_error: null,
+});
+
+const markCachedJobPending = (queryClient: QueryClient, id: string): void => {
+  queryClient.getQueriesData<unknown>({ queryKey: ['jobs'] }).forEach(([key, data]) => {
+    if (Array.isArray(data)) {
+      let changed = false;
+      const next = data.map((item) => {
+        if (!isJob(item) || item.id !== id) return item;
+        changed = true;
+        return markJobPending(item);
+      });
+      if (changed) queryClient.setQueryData(key, next);
+      return;
+    }
+
+    if (isJob(data) && data.id === id) {
+      queryClient.setQueryData(key, markJobPending(data));
+    }
+  });
+};
+
+export const invalidateJobQueries = (queryClient: QueryClient): void => {
+  void queryClient.invalidateQueries({ queryKey: ['jobs'] });
+};
 
 export const serializeJobFilters = (
   filters: JobFilters,
@@ -22,42 +71,52 @@ export const serializeJobFilters = (
   return params;
 };
 
-export const useJobs = (filters: JobFilters) => {
+export const useJobs = (filters: JobFilters): UseQueryResult<Job[]> => {
   return useQuery<Job[]>({
     queryKey: ['jobs', filters],
     queryFn: async () => {
-      const { data } = await apiClient.get('/jobs', {
+      const { data } = await apiClient.get<Job[]>('/jobs', {
         params: serializeJobFilters(filters),
       });
       return data;
     },
     placeholderData: (previous) => previous,
+    refetchInterval: ({ state }) =>
+      state.status !== 'error' &&
+      state.data?.some(
+        (job) => job.analysis_status === AnalysisStatus.PENDING,
+      )
+        ? 2000
+        : false,
   });
 };
 
-export const useJob = (id: string) => {
+export const useJob = (id: string): UseQueryResult<Job> => {
   return useQuery<Job>({
     queryKey: ['jobs', id],
     queryFn: async () => {
-      const { data } = await apiClient.get(`/jobs/${id}`);
+      const { data } = await apiClient.get<Job>(`/jobs/${id}`);
       return data;
     },
     enabled: !!id,
+    refetchInterval: ({ state }) =>
+      state.status !== 'error' &&
+      state.data?.analysis_status === AnalysisStatus.PENDING
+        ? 2000
+        : false,
   });
 };
 
-export const useCreateJob = () => {
+export const useCreateJob = (): UseMutationResult<
+  Job,
+  unknown,
+  CreateJobPayload
+> => {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: async (payload: {
-      company_name: string;
-      title: string;
-      url: string;
-      description: string;
-      posted_at?: string;
-    }) => {
-      const { data } = await apiClient.post('/jobs', payload);
+  return useMutation<Job, unknown, CreateJobPayload>({
+    mutationFn: async (payload: CreateJobPayload): Promise<Job> => {
+      const { data } = await apiClient.post<Job>('/jobs', payload);
       return data;
     },
     onSuccess: () => {
@@ -85,7 +144,7 @@ export const useUpdateJob = () => {
 export const useReanalyzeJob = () => {
   const queryClient = useQueryClient();
 
-  return useMutation({
+  return useMutation<ReanalysisResult, unknown, string>({
     mutationFn: async (id: string): Promise<ReanalysisResult> => {
       const { data } = await apiClient.post<ReanalysisResult>(
         '/jobs/reanalyze',
@@ -93,12 +152,12 @@ export const useReanalyzeJob = () => {
       );
       return data;
     },
-    onSuccess: (_, id) => {
-      queryClient.invalidateQueries({ queryKey: ['jobs'] });
-      queryClient.invalidateQueries({ queryKey: ['jobs', id] });
-      queryClient.invalidateQueries({
-        queryKey: ['jobs', id, 'analysis-history'],
-      });
+    onMutate: async (id: string): Promise<void> => {
+      await queryClient.cancelQueries({ queryKey: ['jobs'] });
+      markCachedJobPending(queryClient, id);
+    },
+    onSettled: (): void => {
+      invalidateJobQueries(queryClient);
     },
   });
 };

@@ -63,7 +63,36 @@ export class JobsService {
   ) {}
 
   async create(createJobDto: CreateJobDto): Promise<Job> {
-    // 1. Deduplication check
+    const job = await this.persistPendingJob(createJobDto);
+    return this.processJobAnalysis(
+      job,
+      createJobDto.description,
+      createJobDto.company_name,
+      createJobDto.title,
+    );
+  }
+
+  async enqueue(createJobDto: CreateJobDto): Promise<Job> {
+    const job = await this.persistPendingJob(createJobDto);
+
+    // ponytail: in-process work is lost on restart; use Bull/Redis when durable jobs matter.
+    setImmediate(() => {
+      this.processJobAnalysis(
+        job,
+        createJobDto.description,
+        createJobDto.company_name,
+        createJobDto.title,
+      ).catch((error: unknown) => {
+        const message = error instanceof Error ? error.message : String(error);
+        this.logger.error(
+          `Unhandled error in background job analysis for ${job.id}: ${message}`,
+        );
+      });
+    });
+    return job;
+  }
+
+  private async persistPendingJob(createJobDto: CreateJobDto): Promise<Job> {
     const existingJob = await this.jobRepository.findOne({
       where: { url: createJobDto.url },
       withDeleted: false,
@@ -97,13 +126,7 @@ export class JobsService {
       },
     });
 
-    await this.jobRepository.save(job);
-    return this.processJobAnalysis(
-      job,
-      createJobDto.description,
-      createJobDto.company_name,
-      createJobDto.title,
-    );
+    return this.jobRepository.save(job);
   }
 
   async reanalyze(id: string): Promise<Job> {
@@ -187,17 +210,6 @@ export class JobsService {
       const isApplicableByScore = score >= scoreThreshold;
       const isApplicableByDomain = applicableDomains.includes(analysis.domain);
 
-      // Use provided company/title if given, otherwise fall back to LLM results or defaults
-      const company_name =
-        providedCompany === 'skip'
-          ? analysis.company_name || 'Unknown Company'
-          : providedCompany;
-
-      const title =
-        providedTitle === 'skip'
-          ? analysis.title || 'Unknown Title'
-          : providedTitle;
-
       const normalizations = await this.skillsService.normalizeRequirements(
         analysis.requirements.map((requirement) => ({
           name: requirement.name,
@@ -217,88 +229,151 @@ export class JobsService {
         });
       }
 
-      // Save job and requirements to DB
-      Object.assign(job, {
-        company_name,
-        title,
-        llm_score: score,
-        llm_domain: analysis.domain,
-        domain: analysis.domain, // Default domain is LLM domain
-        llm_summary: analysis.summary,
-        llm_is_applicable: isApplicableByScore && isApplicableByDomain,
-        score_breakdown: analysis.score_breakdown,
-        recommendation,
-        suggested_classification: this.classificationFor(recommendation),
-        analysis_status: AnalysisStatus.COMPLETED,
-        analysis_error: null,
-        analysis_model: result.model,
-        prompt_version: result.prompt_version,
-        analyzed_at: result.analyzed_at,
-        cv_revision_id: result.cv_revision_id,
-        cv_revision: result.cv_revision,
-        requirements: requirements.map(({ req, index, normalized }) =>
-          this.requirementRepository.create({
-            name: req.name,
-            met_status: req.met_status,
-            reasoning: req.reasoning,
-            job_description_excerpt: req.job_description_excerpt,
-            cv_evidence: req.cv_evidence,
-            evidence_inferred: req.evidence_inferred,
-            order: index,
-            ...normalized,
-          }),
-        ),
-      });
-
-      if (job.requirements?.length) {
-        await this.requirementRepository.delete({ job_id: job.id });
+      const currentJob = await this.findCurrentJobForAnalysis(job.id);
+      if (!currentJob || currentJob.deleted_at) {
+        this.logger.warn(
+          `Skipping analysis persistence for missing or deleted job ${job.id}`,
+        );
+        return currentJob ?? job;
       }
-      const revision = await this.analysisRevisionRepository.save(
-        this.analysisRevisionRepository.create({
-          job_id: job.id,
-          cv_revision_id: result.cv_revision_id,
-          cv_revision: result.cv_revision,
-          status: AnalysisStatus.COMPLETED,
-          result: analysis,
-          score,
-          recommendation,
-          error: null,
-          model: result.model,
-          prompt_version: result.prompt_version,
-          analyzed_at: result.analyzed_at,
-        }),
+
+      const company_name =
+        providedCompany === 'skip' &&
+        currentJob.company_name === job.company_name
+          ? analysis.company_name || 'Unknown Company'
+          : currentJob.company_name;
+
+      const title =
+        providedTitle === 'skip' && currentJob.title === job.title
+          ? analysis.title || 'Unknown Title'
+          : currentJob.title;
+
+      const analysisPatch = await this.dataSource.transaction(
+        async (manager): Promise<Partial<Job>> => {
+          const requirementRepository = manager.getRepository(JobRequirement);
+          const analysisRevisionRepository =
+            manager.getRepository(JobAnalysisRevision);
+          const jobRepository = manager.getRepository(Job);
+          const requirementsToSave = requirements.map(
+            ({ req, index, normalized }) =>
+              requirementRepository.create({
+                name: req.name,
+                met_status: req.met_status,
+                reasoning: req.reasoning,
+                job_description_excerpt: req.job_description_excerpt,
+                cv_evidence: req.cv_evidence,
+                evidence_inferred: req.evidence_inferred,
+                order: index,
+                ...normalized,
+              }),
+          );
+
+          await requirementRepository.delete({ job_id: currentJob.id });
+          const revision = await analysisRevisionRepository.save(
+            analysisRevisionRepository.create({
+              job_id: currentJob.id,
+              cv_revision_id: result.cv_revision_id,
+              cv_revision: result.cv_revision,
+              status: AnalysisStatus.COMPLETED,
+              result: analysis,
+              score,
+              recommendation,
+              error: null,
+              model: result.model,
+              prompt_version: result.prompt_version,
+              analyzed_at: result.analyzed_at,
+            }),
+          );
+          const patch: Partial<Job> = {
+            id: currentJob.id,
+            ...(providedCompany === 'skip' &&
+            currentJob.company_name === job.company_name
+              ? { company_name }
+              : {}),
+            ...(providedTitle === 'skip' && currentJob.title === job.title
+              ? { title }
+              : {}),
+            llm_score: score,
+            llm_domain: analysis.domain,
+            domain: analysis.domain, // Default domain is LLM domain
+            llm_summary: analysis.summary,
+            llm_is_applicable: isApplicableByScore && isApplicableByDomain,
+            score_breakdown: analysis.score_breakdown,
+            recommendation,
+            suggested_classification: this.classificationFor(recommendation),
+            analysis_status: AnalysisStatus.COMPLETED,
+            analysis_error: null,
+            analysis_model: result.model,
+            prompt_version: result.prompt_version,
+            analyzed_at: result.analyzed_at,
+            cv_revision_id: result.cv_revision_id,
+            cv_revision: result.cv_revision,
+            requirements: requirementsToSave,
+            analysis_revision_id: revision.id,
+          };
+          await jobRepository.save(patch);
+          return patch;
+        },
       );
-      job.analysis_revision_id = revision.id;
-      return this.jobRepository.save(job);
+      return Object.assign(currentJob, analysisPatch);
     } catch (error: unknown) {
       const message =
         error instanceof Error && error.name === 'InvalidLlmOutputError'
           ? error.message
           : 'AI provider request failed';
-      job.analysis_status = AnalysisStatus.FAILED;
-      job.analysis_error = message.replace(/[\r\n]+/g, ' ').slice(0, 500);
-      job.analyzed_at = new Date();
+      const currentJob = await this.findCurrentJobForAnalysis(job.id);
+      if (!currentJob || currentJob.deleted_at) {
+        this.logger.warn(
+          `Skipping failed analysis persistence for missing or deleted job ${job.id}`,
+        );
+        return currentJob ?? job;
+      }
+      const analysisError = message.replace(/[\r\n]+/g, ' ').slice(0, 500);
+      const analyzedAt = new Date();
       this.logger.warn(
-        `Job analysis failed for ${job.id}: ${job.analysis_error}`,
+        `Job analysis failed for ${currentJob.id}: ${analysisError}`,
       );
-      const revision = await this.analysisRevisionRepository.save(
-        this.analysisRevisionRepository.create({
-          job_id: job.id,
-          cv_revision_id: job.cv_revision_id,
-          cv_revision: job.cv_revision,
-          status: AnalysisStatus.FAILED,
-          result: null,
-          score: null,
-          recommendation: null,
-          error: job.analysis_error,
-          model: null,
-          prompt_version: null,
-          analyzed_at: job.analyzed_at,
-        }),
+      const analysisPatch = await this.dataSource.transaction(
+        async (manager): Promise<Partial<Job>> => {
+          const analysisRevisionRepository =
+            manager.getRepository(JobAnalysisRevision);
+          const jobRepository = manager.getRepository(Job);
+          const revision = await analysisRevisionRepository.save(
+            analysisRevisionRepository.create({
+              job_id: currentJob.id,
+              cv_revision_id: currentJob.cv_revision_id,
+              cv_revision: currentJob.cv_revision,
+              status: AnalysisStatus.FAILED,
+              result: null,
+              score: null,
+              recommendation: null,
+              error: analysisError,
+              model: null,
+              prompt_version: null,
+              analyzed_at: analyzedAt,
+            }),
+          );
+          const patch: Partial<Job> = {
+            id: currentJob.id,
+            analysis_status: AnalysisStatus.FAILED,
+            analysis_error: analysisError,
+            analyzed_at: analyzedAt,
+            analysis_revision_id: revision.id,
+          };
+          await jobRepository.save(patch);
+          return patch;
+        },
       );
-      job.analysis_revision_id = revision.id;
-      return this.jobRepository.save(job);
+      return Object.assign(currentJob, analysisPatch);
     }
+  }
+
+  private async findCurrentJobForAnalysis(id: string): Promise<Job | null> {
+    return this.jobRepository.findOne({
+      where: { id },
+      relations: ['requirements'],
+      withDeleted: true,
+    });
   }
 
   async findAll(filters: FindJobsQueryDto = {}): Promise<Job[]> {

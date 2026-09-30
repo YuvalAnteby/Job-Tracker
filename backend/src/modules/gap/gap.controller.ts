@@ -13,7 +13,8 @@ import {
   ApiOkResponse,
   ApiAcceptedResponse,
 } from '@nestjs/swagger';
-import { CohortPreview, GapService } from './gap.service';
+import { CohortPreview, GapGenerationResult, GapService } from './gap.service';
+import { GapSummary } from './entities/gap-summary.entity';
 import { Domain } from '../jobs/enums/domain.enum';
 import { GapCohortDto } from './dto/gap-cohort.dto';
 
@@ -28,14 +29,15 @@ export class GapController {
   @ApiAcceptedResponse({ description: 'Analysis enqueued' })
   async generate(
     @Body() dto: GapCohortDto,
-  ): Promise<{ message: string; cohort: CohortPreview }> {
-    const cohort = await this.gapService.generate(dto);
+  ): Promise<GapGenerationResult & { message: string }> {
+    const { cohort, run } = await this.gapService.generate(dto);
     return {
       message:
         cohort.included_job_ids.length > 0
           ? 'Gap analysis enqueued. You will be notified via Telegram when ready.'
           : 'No jobs match this cohort.',
       cohort,
+      run,
     };
   }
 
@@ -49,14 +51,23 @@ export class GapController {
   @Get('latest')
   @ApiOperation({ summary: 'Get latest gap summary' })
   @ApiOkResponse({ description: 'Latest summary retrieved' })
-  async getLatest(@Query('domain') domain?: Domain) {
+  async getLatest(
+    @Query('domain') domain?: Domain,
+  ): Promise<GapSummary | null> {
     return this.gapService.getLatest(domain);
+  }
+
+  @Get('status')
+  @ApiOperation({ summary: 'Get latest gap analysis run for a cohort' })
+  @ApiOkResponse({ description: 'Latest cohort run retrieved' })
+  getStatus(@Query() query: GapCohortDto): Promise<GapSummary | null> {
+    return this.gapService.getStatus(query);
   }
 
   @Get('history')
   @ApiOperation({ summary: 'Get gap summary history' })
   @ApiOkResponse({ description: 'History retrieved' })
-  async getHistory(@Query('limit') limit: number = 10) {
+  async getHistory(@Query('limit') limit: number = 10): Promise<GapSummary[]> {
     return this.gapService.getHistory(limit);
   }
 }

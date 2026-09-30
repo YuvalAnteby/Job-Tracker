@@ -43,7 +43,7 @@ interface ActionForm {
 }
 
 const controlClass =
-  'rounded-md border border-slate-300 bg-slate-50 px-2 py-1.5 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/40 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200';
+  'min-h-11 rounded-md border border-slate-300 bg-slate-50 px-2 py-1.5 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/40 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200';
 
 const NextActionForm = ({ job }: { job: Job }): ReactElement => {
   const { schedule } = useApplicationActions();
@@ -84,7 +84,7 @@ const NextActionForm = ({ job }: { job: Job }): ReactElement => {
       <button
         type="submit"
         disabled={schedule.isPending}
-        className="row-span-2 rounded-md border border-slate-300 px-2.5 text-xs font-semibold hover:bg-slate-100 disabled:opacity-50 dark:border-slate-700 dark:hover:bg-slate-800"
+        className="row-span-2 min-h-11 rounded-md border border-slate-300 px-2.5 text-xs font-semibold hover:bg-slate-100 disabled:opacity-50 dark:border-slate-700 dark:hover:bg-slate-800"
       >
         Schedule
       </button>
@@ -161,7 +161,7 @@ const PipelineJob = ({
       className={cn(
         'border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-950',
         compact
-          ? 'grid gap-3 border-b px-3 py-3 md:grid-cols-[minmax(12rem,1fr)_repeat(4,minmax(8rem,auto))] md:items-center'
+          ? 'grid gap-3 border-b px-3 py-3 xl:grid-cols-[minmax(12rem,1fr)_repeat(4,minmax(8rem,auto))] xl:items-center'
           : 'rounded-md border p-3 shadow-sm',
       )}
     >
@@ -177,6 +177,7 @@ const PipelineJob = ({
         Listing
         <select
           className={controlClass}
+          disabled={update.isPending}
           value={job.listing_state}
           onChange={(event) =>
             patch({ listing_state: event.target.value as ListingState })
@@ -193,6 +194,7 @@ const PipelineJob = ({
         Decision
         <select
           className={controlClass}
+          disabled={update.isPending}
           value={job.user_decision}
           onChange={(event) =>
             patch({ user_decision: event.target.value as UserDecision })
@@ -209,6 +211,7 @@ const PipelineJob = ({
         <input
           type="checkbox"
           checked={job.include_in_gap}
+          disabled={update.isPending}
           onChange={(event) => patch({ include_in_gap: event.target.checked })}
           className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
         />
@@ -219,7 +222,7 @@ const PipelineJob = ({
         className={cn(
           'grid gap-2',
           compact
-            ? 'md:min-w-56'
+            ? 'xl:min-w-56'
             : 'mt-3 border-t border-slate-200 pt-3 dark:border-slate-800',
         )}
         onSubmit={submit}
@@ -248,7 +251,7 @@ const PipelineJob = ({
           <button
             type="submit"
             disabled={transition.isPending || !selectedStage}
-            className="rounded-md bg-blue-600 px-2.5 py-1.5 text-xs font-semibold text-slate-50 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500/50 disabled:opacity-50"
+            className="min-h-11 rounded-md bg-blue-600 px-2.5 py-1.5 text-xs font-semibold text-slate-50 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500/50 disabled:opacity-50"
           >
             Move
           </button>
@@ -313,7 +316,7 @@ const PipelineJob = ({
         <details
           className={cn(
             'text-xs text-slate-500',
-            compact ? 'md:col-span-5' : 'mt-2',
+            compact ? 'xl:col-span-5' : 'mt-2',
           )}
         >
           <summary className="cursor-pointer rounded focus:outline-none focus:ring-2 focus:ring-blue-500/40">
@@ -366,7 +369,7 @@ const Pipeline = (): ReactElement => {
             aria-pressed={view === 'board'}
             onClick={() => setView('board')}
             className={cn(
-              'rounded px-2.5 py-1.5 text-xs font-medium',
+              'min-h-11 rounded px-2.5 py-1.5 text-xs font-medium',
               view === 'board'
                 ? 'bg-slate-200 text-slate-900 dark:bg-slate-700 dark:text-slate-100'
                 : 'text-slate-500',
@@ -380,7 +383,7 @@ const Pipeline = (): ReactElement => {
             aria-pressed={view === 'list'}
             onClick={() => setView('list')}
             className={cn(
-              'rounded px-2.5 py-1.5 text-xs font-medium',
+              'min-h-11 rounded px-2.5 py-1.5 text-xs font-medium',
               view === 'list'
                 ? 'bg-slate-200 text-slate-900 dark:bg-slate-700 dark:text-slate-100'
                 : 'text-slate-500',

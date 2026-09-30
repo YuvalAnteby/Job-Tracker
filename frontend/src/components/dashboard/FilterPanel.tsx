@@ -46,17 +46,17 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
   };
 
   return (
-    <div className="py-4 space-y-10">
+    <div className="grid gap-6 py-4 sm:grid-cols-2 lg:block lg:space-y-8">
       <div>
-        <h3 className="text-xs font-semibold text-gray-500 dark:text-slate-400 mb-4 uppercase tracking-wider">
+        <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-slate-400">
           Search
         </h3>
         <div className="relative">
-          <Search className="absolute left-0 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-slate-500" />
+          <Search className="absolute left-0 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
           <input
             type="text"
             placeholder="Company or title..."
-            className="w-full pl-8 pr-4 py-2 bg-transparent text-gray-900 dark:text-white border-b border-gray-200 dark:border-slate-800 focus:border-blue-500 outline-none transition-colors placeholder-gray-400 dark:placeholder-slate-500"
+            className="min-h-11 w-full border-b border-gray-200 bg-transparent pl-8 pr-4 text-gray-900 outline-none transition-colors placeholder:text-gray-400 focus:border-blue-500 dark:border-slate-800 dark:text-white dark:placeholder:text-slate-500"
             value={filters.search || ''}
             onChange={(e) =>
               setFilters((prev) => ({
@@ -69,15 +69,15 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
       </div>
 
       <div>
-        <h3 className="text-xs font-semibold text-gray-500 dark:text-slate-400 mb-4 uppercase tracking-wider">
+        <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-slate-400">
           Domain
         </h3>
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-1">
           {Object.values(Domain).map((domain) => (
             <button
               key={domain}
               onClick={() => toggleDomain(domain)}
-              className={`text-left text-sm font-medium transition-colors ${
+              className={`min-h-11 text-left text-sm font-medium transition-colors ${
                 filters.domains?.includes(domain)
                   ? 'text-gray-900 dark:text-white'
                   : 'text-gray-400 dark:text-slate-600 hover:text-gray-600 dark:hover:text-slate-400'
@@ -90,17 +90,17 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
       </div>
 
       <div>
-        <h3 className="text-xs font-semibold text-gray-500 dark:text-slate-400 mb-4 uppercase tracking-wider">
+        <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-slate-400">
           Status
         </h3>
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-1">
           {Object.values(JobStatus)
             .filter((s) => s !== JobStatus.DELETED)
             .map((status) => (
               <button
                 key={status}
                 onClick={() => toggleStatus(status)}
-                className={`text-left text-sm font-medium transition-colors ${
+                className={`min-h-11 text-left text-sm font-medium transition-colors ${
                   filters.statuses?.includes(status)
                     ? 'text-gray-900 dark:text-white'
                     : 'text-gray-400 dark:text-slate-600 hover:text-gray-600 dark:hover:text-slate-400'
@@ -113,15 +113,15 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
       </div>
 
       <div>
-        <h3 className="text-xs font-semibold text-gray-500 dark:text-slate-400 mb-4 uppercase tracking-wider">
+        <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-slate-400">
           Classification
         </h3>
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-1">
           {Object.values(AnalysisClassification).map((classification) => (
             <button
               key={classification}
               onClick={() => toggleClassification(classification)}
-              className={`text-left text-sm font-medium transition-colors ${
+              className={`min-h-11 text-left text-sm font-medium transition-colors ${
                 filters.classifications?.includes(classification)
                   ? 'text-gray-900 dark:text-white'
                   : 'text-gray-400 dark:text-slate-600 hover:text-gray-600 dark:hover:text-slate-400'
@@ -134,11 +134,11 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
       </div>
 
       <div>
-        <h3 className="text-xs font-semibold text-gray-500 dark:text-slate-400 mb-4 uppercase tracking-wider">
+        <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-slate-400">
           Fit
         </h3>
         <select
-          className="w-full py-2 bg-transparent border-b border-gray-200 dark:border-slate-800 text-gray-900 dark:text-white focus:border-blue-500 outline-none appearance-none cursor-pointer"
+          className="min-h-11 w-full cursor-pointer appearance-none border-b border-gray-200 bg-transparent py-2 text-gray-900 outline-none focus:border-blue-500 dark:border-slate-800 dark:text-white"
           value={filters.fit || 'all'}
           onChange={(e) => {
             const fit = e.target.value as NonNullable<JobFilters['fit']>;

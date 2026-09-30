@@ -54,7 +54,7 @@ function ItemControls({
   });
   return (
     <form
-      className="grid gap-2 sm:grid-cols-[11rem_8rem_minmax(12rem,1fr)_auto]"
+      className="grid gap-2 sm:grid-cols-2 lg:grid-cols-[11rem_8rem_minmax(12rem,1fr)_auto]"
       onSubmit={handleSubmit(save)}
     >
       <label className="grid gap-1 text-xs font-medium">
@@ -86,7 +86,7 @@ function ItemControls({
         />
       </label>
       <button
-        className="mt-auto inline-flex h-10 items-center justify-center gap-2 rounded-md border border-gray-300 bg-white px-3 text-sm font-medium hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800"
+        className="mt-auto inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-gray-300 bg-white px-3 text-sm font-medium hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800"
         disabled={pending}
         type="submit"
       >
@@ -143,7 +143,7 @@ function ProofForm({
                   </span>
                 ) : (
                   <button
-                    className="rounded-md border border-gray-300 px-3 py-1.5 text-xs font-medium hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-slate-700 dark:hover:bg-slate-800"
+                    className="min-h-11 rounded-md border border-gray-300 px-3 py-1.5 text-xs font-medium hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-slate-700 dark:hover:bg-slate-800"
                     disabled={pending}
                     onClick={() => promote(artifact.id)}
                     type="button"
@@ -193,7 +193,7 @@ function ProofForm({
             />
           </label>
           <button
-            className="w-fit rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:opacity-50"
+            className="min-h-11 w-fit rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:opacity-50"
             disabled={pending}
             type="submit"
           >
@@ -312,7 +312,7 @@ function Roadmap(): ReactElement {
       <section className="rounded-md border border-gray-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <h2 className="mb-3 font-semibold">Add a roadmap item</h2>
         <form
-          className="grid gap-3 md:grid-cols-[minmax(12rem,1fr)_10rem_7rem_7rem_auto]"
+          className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(12rem,1fr)_10rem_7rem_7rem_auto]"
           onSubmit={submit}
         >
           <label className="grid gap-1 text-xs font-medium">
@@ -353,7 +353,7 @@ function Roadmap(): ReactElement {
             />
           </label>
           <button
-            className="mt-auto inline-flex h-10 items-center justify-center gap-2 rounded-md bg-blue-600 px-4 text-sm font-medium text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:opacity-50"
+            className="mt-auto inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-blue-600 px-4 text-sm font-medium text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:opacity-50"
             disabled={create.isPending}
             type="submit"
           >
@@ -368,7 +368,7 @@ function Roadmap(): ReactElement {
               <option value="ROLE_MISMATCH">Role mismatch</option>
             </select>
           </label>
-          <label className="grid gap-1 text-xs font-medium md:col-span-3">
+          <label className="grid gap-1 text-xs font-medium sm:col-span-2 lg:col-span-3">
             Notes
             <input
               className={controlClass}

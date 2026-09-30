@@ -7,8 +7,15 @@ import {
   Param,
   Delete,
   Query,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiAcceptedResponse,
+} from '@nestjs/swagger';
 import { JobsService } from './jobs.service';
 import { CreateJobDto } from './dto/create-job.dto';
 import { UpdateJobDto } from './dto/update-job.dto';
@@ -26,14 +33,15 @@ export class JobsController {
   constructor(private readonly jobsService: JobsService) {}
 
   @Post()
-  @ApiOperation({ summary: 'Create (ingest) a new job' })
-  @ApiResponse({
-    status: 201,
-    description: 'Job successfully ingested and analyzed.',
+  @HttpCode(HttpStatus.ACCEPTED)
+  @ApiOperation({ summary: 'Create a job and enqueue analysis' })
+  @ApiAcceptedResponse({
+    description: 'Job saved with pending analysis.',
+    type: Job,
   })
   @ApiResponse({ status: 409, description: 'Job URL already exists.' })
   create(@Body() createJobDto: CreateJobDto): Promise<Job> {
-    return this.jobsService.create(createJobDto);
+    return this.jobsService.enqueue(createJobDto);
   }
 
   @Get()

@@ -87,7 +87,7 @@ const ResponseTable = ({
     { total: number; responses: number; response_rate: number | null }
   >;
 }): ReactElement => (
-  <section>
+  <section className="min-w-0">
     <h2 className="mb-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
       {title}
     </h2>

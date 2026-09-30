@@ -22,25 +22,27 @@ interface SkillRowProps {
 
 const SkillRow = ({ skill, addToRoadmap, adding }: SkillRowProps) => (
   <details className="group border-b border-gray-200 last:border-b-0 dark:border-slate-800">
-    <summary className="grid cursor-pointer list-none grid-cols-[minmax(9rem,1fr)_repeat(3,5rem)] items-center gap-3 px-4 py-3 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500 dark:hover:bg-slate-800/60 sm:grid-cols-[minmax(12rem,1fr)_repeat(4,6rem)]">
-      <span className="font-semibold text-gray-950 dark:text-slate-50">
+    <summary className="grid min-h-11 cursor-pointer list-none gap-2 px-3 py-3 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500 dark:hover:bg-slate-800/60 sm:grid-cols-[minmax(12rem,1fr)_repeat(4,6rem)] sm:items-center sm:gap-3 sm:px-4">
+      <span className="min-w-0 break-words font-semibold text-gray-950 dark:text-slate-50">
         {skill.name}
       </span>
-      <span className="text-center text-sm tabular-nums">
-        {skill.required_count}
-        <span className="sr-only"> required</span>
-      </span>
-      <span className="hidden text-center text-sm tabular-nums sm:block">
-        {skill.preferred_count}
-        <span className="sr-only"> preferred</span>
-      </span>
-      <span className="text-center text-sm tabular-nums text-red-700 dark:text-red-300">
-        {skill.gap_count}
-        <span className="sr-only"> gaps</span>
-      </span>
-      <span className="text-center text-xs font-medium text-gray-500 dark:text-slate-400">
-        {skill.actionability}
-      </span>
+      <div className="grid grid-cols-4 gap-2 text-center sm:contents">
+        <span className="text-sm tabular-nums">
+          {skill.required_count}
+          <span className="sr-only"> required</span>
+        </span>
+        <span className="text-sm tabular-nums">
+          {skill.preferred_count}
+          <span className="sr-only"> preferred</span>
+        </span>
+        <span className="text-sm tabular-nums text-red-700 dark:text-red-300">
+          {skill.gap_count}
+          <span className="sr-only"> gaps</span>
+        </span>
+        <span className="text-xs font-medium text-gray-500 dark:text-slate-400">
+          {skill.actionability}
+        </span>
+      </div>
     </summary>
     <div className="bg-gray-50 px-4 py-4 dark:bg-slate-950/60">
       <div className="mb-3 flex flex-wrap items-center gap-2">
@@ -51,7 +53,7 @@ const SkillRow = ({ skill, addToRoadmap, adding }: SkillRowProps) => (
         ))}
         <span className={badgeClass}>{skill.effort.toLowerCase()} effort</span>
         <button
-          className="ml-auto rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:opacity-50"
+          className="ml-auto inline-flex min-h-11 items-center rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:opacity-50"
           disabled={adding}
           onClick={addToRoadmap}
           type="button"
@@ -108,9 +110,9 @@ const Skills = () => {
   });
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6">
-      <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div>
+    <div className="mx-auto min-w-0 max-w-7xl space-y-6">
+      <header className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div className="min-w-0">
           <h1 className="text-2xl font-bold text-gray-950 dark:text-slate-50">
             Skill evidence
           </h1>
@@ -119,11 +121,11 @@ const Skills = () => {
             evidence.
           </p>
         </div>
-        <div className="flex flex-wrap items-end gap-3">
+        <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-end">
           <label className="grid gap-1 text-xs font-medium text-gray-600 dark:text-slate-300">
             Domain
             <select
-              className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-900"
+              className="min-h-11 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-900 sm:w-auto"
               onChange={(event) =>
                 setDomain(event.target.value as Domain | 'ALL')
               }
@@ -137,7 +139,7 @@ const Skills = () => {
               ))}
             </select>
           </label>
-          <label className="flex h-10 items-center gap-2 rounded-md border border-gray-300 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-900">
+          <label className="flex min-h-11 items-center gap-2 rounded-md border border-gray-300 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-900">
             <input
               checked={includeResearch}
               className="h-4 w-4 accent-blue-600"
@@ -147,7 +149,7 @@ const Skills = () => {
             Include research jobs
           </label>
           <button
-            className="inline-flex h-10 items-center gap-2 rounded-md bg-blue-600 px-4 text-sm font-medium text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:opacity-50"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-blue-600 px-4 text-sm font-medium text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:opacity-50"
             disabled={rebuild.isPending}
             onClick={() => rebuild.mutate()}
             type="button"
@@ -200,12 +202,14 @@ const Skills = () => {
 
           {data.skills.length ? (
             <section className="overflow-hidden rounded-md border border-gray-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-              <div className="grid grid-cols-[minmax(9rem,1fr)_repeat(3,5rem)] gap-3 border-b border-gray-200 bg-gray-50 px-4 py-2 text-center text-xs font-semibold uppercase tracking-wide text-gray-500 dark:border-slate-800 dark:bg-slate-800/70 dark:text-slate-400 sm:grid-cols-[minmax(12rem,1fr)_repeat(4,6rem)]">
+              <div className="grid gap-2 border-b border-gray-200 bg-gray-50 px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:border-slate-800 dark:bg-slate-800/70 dark:text-slate-400 sm:grid-cols-[minmax(12rem,1fr)_repeat(4,6rem)] sm:gap-3 sm:px-4">
                 <span className="text-left">Skill</span>
-                <span>Required</span>
-                <span className="hidden sm:block">Preferred</span>
-                <span>Gaps</span>
-                <span>Action</span>
+                <div className="grid grid-cols-4 gap-2 sm:contents">
+                  <span>Required</span>
+                  <span>Preferred</span>
+                  <span>Gaps</span>
+                  <span>Action</span>
+                </div>
               </div>
               {data.skills.map((skill) => (
                 <SkillRow
@@ -265,7 +269,7 @@ const Skills = () => {
             />
           </label>
           <button
-            className="mt-auto h-10 rounded-md border border-gray-300 bg-white px-4 text-sm font-medium hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800"
+            className="mt-auto min-h-11 rounded-md border border-gray-300 bg-white px-4 text-sm font-medium hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800"
             disabled={alias.isPending}
             type="submit"
           >

@@ -194,7 +194,7 @@ Return ONLY valid JSON. No markdown, no preamble.
 
 | Method | Route | Description |
 |---|---|---|
-| `POST` | `/jobs` | Add new job — triggers LLM analysis |
+| `POST` | `/jobs` | Save a pending job, return 202, and analyze in the background |
 | `GET` | `/jobs` | List jobs with filters |
 | `GET` | `/jobs/:id` | Job detail (includes requirements) |
 | `PATCH` | `/jobs/:id` | Update status, overrides, notes |
@@ -213,6 +213,8 @@ Return ONLY valid JSON. No markdown, no preamble.
 }
 ```
 Either `description` or `description_image_base64` must be present. If image is provided, backend extracts text via LLM Vision first.
+
+The web response is the saved job with `analysis_status: PENDING`. Poll its list or detail representation for `COMPLETED` or `FAILED`; an analysis failure does not discard the posting. Telegram's internal create method continues to await analysis.
 
 **GET /jobs — Query params:**
 ```
@@ -246,6 +248,7 @@ sort=added_at:desc (default)
 |---|---|---|
 | `POST` | `/gap/generate` | Enqueue background gap analysis |
 | `GET` | `/gap/latest` | Get latest summary (all or by domain) |
+| `GET` | `/gap/status` | Get the latest run for the exact domain and research cohort, including pending or failed runs |
 | `GET` | `/gap/history` | List past summaries |
 
 **POST /gap/generate — Request body:**
@@ -256,9 +259,7 @@ sort=added_at:desc (default)
 ```
 
 **Response (202 Accepted):**
-```json
-{ "message": "Gap analysis enqueued. You will be notified via Telegram when ready." }
-```
+Includes `message`, the selected `cohort`, and the persisted pending `run` (`null` when no jobs match). The same run is updated on completion or failure. `/gap/latest` continues to return successful summaries so a previous result remains available while a new run is processing.
 
 ---
 
